@@ -1,0 +1,10 @@
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/logo/logo_dark.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#1E1E2C"
+  remove_alpha_ios: true # To avoid black background on transparency if manageable, but standard iOS icons don't support transparency. 
+  # Actually improved strategy: Use a background color for iOS is not directly supported by this tool easily without a separate image.
+  # But adaptive_icon_background handles Android. For iOS, we might need a non-transparent image.
+  # For now, focusing on Android adaptiveness which is a common complaint.

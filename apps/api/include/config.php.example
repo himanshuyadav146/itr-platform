@@ -1,0 +1,33 @@
+<?php
+/**
+ * Configuration File Template
+ * 
+ * INSTRUCTIONS:
+ * 1. Copy this file to config.php
+ * 2. Update the database credentials with your actual values
+ * 3. Change the JWT key to a secure random string
+ * 4. Never commit config.php to git!
+ */
+
+$servername = "localhost";
+$username = "your_database_username";
+$password = "your_database_password";
+$database = "your_database_name";
+
+// Create connection
+$conn = mysqli_connect($servername, $username, $password, $database);
+
+// Check connection
+if (!$conn) {
+    die("Connection failed: " . mysqli_connect_error());
+}
+
+// JWT Secret Key - CHANGE THIS TO A SECURE RANDOM STRING!
+// Generate a secure key: https://randomkeygen.com/
+$key = 'change_this_to_a_secure_random_string';
+$expire = 36000; // Token expiration time in seconds (10 hours)
+
+// Payment (test/live mode): copy include/payment_config.php.example to payment_config.php
+// and set $payment_mode and Razorpay/Paytm keys. See PAYMENT_SETUP.md.
+?>
+

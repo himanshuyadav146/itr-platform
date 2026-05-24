@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "105837333766",
+    "project_id": "finapp-e9f97",
+    "storage_bucket": "finapp-e9f97.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:105837333766:android:ae52f7c77939d6fd802287",
+        "android_client_info": {
+          "package_name": "com.finapp.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8gmN_LsyQTkJ5fmfDwoUVNO_Xlcg9cbI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

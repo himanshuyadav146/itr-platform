@@ -1,0 +1,16 @@
+{
+    "name": "itr-api/payment-gateway",
+    "description": "Payment gateway integration for ITR API",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "paytm/paytmchecksum": "^1.1",
+        "razorpay/razorpay": "^2.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "PaymentGateway\\": "payment/"
+        }
+    }
+}
+

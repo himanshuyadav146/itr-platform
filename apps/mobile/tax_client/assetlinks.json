@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.finapp.com",
+      "sha256_cert_fingerprints": [
+        "62:0B:30:B0:57:E5:28:8B:A0:F9:2E:11:5E:F5:7B:FE:07:6F:C1:F5:34:4F:CC:BD:BB:77:F3:57:89:B2:4E:64"
+      ]
+    }
+  }
+]

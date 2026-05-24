@@ -1,0 +1,32 @@
+# Mobile — CI/CD (placeholder)
+
+> **Status:** Not configured yet. Uncomment and customize when ready for Play Store / App Store releases.
+
+```yaml
+# name: Mobile Release
+#
+# on:
+#   push:
+#     tags:
+#       - 'mobile-v*'
+#
+# jobs:
+#   build-android:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: subosito/flutter-action@v2
+#         with:
+#           flutter-version: '3.8.x'
+#       - run: flutter pub get
+#         working-directory: apps/mobile/tax_client
+#       - run: dart run build_runner build --delete-conflicting-outputs
+#         working-directory: apps/mobile/tax_client
+#       - run: flutter build appbundle --release
+#         working-directory: apps/mobile/tax_client
+#       # Upload to Play Store or artifact storage
+```
+
+**Requires:** Signing keystore and `key.properties` as GitHub secrets (never commit to repo).
+
+See [docs/projects/MOBILE.md](../docs/projects/MOBILE.md).

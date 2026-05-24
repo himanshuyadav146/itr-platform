@@ -1,0 +1,57 @@
+# ============================================
+# ITR API - Apache Configuration
+# ============================================
+
+# Enable Rewrite Engine
+RewriteEngine On
+RewriteBase /api/
+
+# ============================================
+# Optional: Remove .php extension from URLs
+# ============================================
+# Uncomment below if you want cleaner URLs like /auth/refresh-token
+# Instead of /auth/refresh_token.php
+#
+# RewriteCond %{REQUEST_FILENAME} !-d
+# RewriteCond %{REQUEST_FILENAME}\.php -f
+# RewriteRule ^(.*)$ $1.php [L]
+#
+# Example: /auth/refresh-token → /auth/refresh_token.php
+
+# ============================================
+# Enable CORS
+# ============================================
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+    
+    # Handle preflight requests
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=200,L]
+</IfModule>
+
+# ============================================
+# PHP Settings
+# ============================================
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+
+# ============================================
+# Security: Hide sensitive files
+# ============================================
+<FilesMatch "^(config\.php|\.htaccess|error_log|\.git|\.env)">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# ============================================
+# Default index file
+# ============================================
+DirectoryIndex index.php index.html
+
+

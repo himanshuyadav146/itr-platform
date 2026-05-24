@@ -1,0 +1,424 @@
+{
+	"info": {
+		"_postman_id": "itr-api-collection-2025",
+		"name": "ITR API - Local Testing",
+		"description": "Complete API collection for ITR (Income Tax Return) API testing. Base URL: http://localhost/api",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "pan_number",
+			"value": "ABCDE1234F",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Signup",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"user_id\", jsonData.data?.UserId || \"\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"test123\",\n    \"name\": \"Test User\",\n    \"mobile\": \"9876543210\",\n    \"platform\": \"web\",\n    \"version\": \"1.0\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/signup.php",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "signup.php"]
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"token\", jsonData.data?.token || \"\");",
+									"    pm.collectionVariables.set(\"user_id\", jsonData.data?.UserId || \"\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"test123\",\n    \"platform\": \"web\",\n    \"version\": \"1.0\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login.php",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "login.php"]
+						}
+					}
+				},
+				{
+					"name": "Forget Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"newpassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/forget_password.php",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "forget_password.php"]
+						}
+					}
+				},
+				{
+					"name": "Test Token",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/auth/test_token.php",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "test_token.php"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Personal Details",
+			"item": [
+				{
+					"name": "Add/Update Personal Details",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"panNumber\": \"ABCDE1234F\",\n    \"firstName\": \"John\",\n    \"middleName\": \"Kumar\",\n    \"lastName\": \"Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"mobileNumber\": \"9876543210\",\n    \"aadharCardNumber\": \"123456789012\",\n    \"gender\": \"Male\",\n    \"DATEOFBIRTH\": \"1990-01-15\",\n    \"financialYear\": \"2024-25\",\n    \"address\": \"123 Main Street, City, State\",\n    \"country\": \"India\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/itrdetails/personal_details.php",
+							"host": ["{{base_url}}"],
+							"path": ["itrdetails", "personal_details.php"]
+						}
+					}
+				},
+				{
+					"name": "Get Personal Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/itrdetails/get_personal_detail.php?UserId={{user_id}}&PanNumber={{pan_number}}",
+							"host": ["{{base_url}}"],
+							"path": ["itrdetails", "get_personal_detail.php"],
+							"query": [
+								{
+									"key": "UserId",
+									"value": "{{user_id}}"
+								},
+								{
+									"key": "PanNumber",
+									"value": "{{pan_number}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Documents",
+			"item": [
+				{
+					"name": "Upload Document",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "PanNumber",
+									"value": "{{pan_number}}",
+									"type": "text"
+								},
+								{
+									"key": "fileName",
+									"value": "form16",
+									"type": "text"
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/itrdetails/add_documents.php",
+							"host": ["{{base_url}}"],
+							"path": ["itrdetails", "add_documents.php"]
+						}
+					}
+				},
+				{
+					"name": "Save Document Details",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"PanNumber\": \"{{pan_number}}\",\n    \"documents\": [\n        {\n            \"documentName\": \"Form 16\",\n            \"fileType\": \"pdf\",\n            \"filePassword\": \"\",\n            \"fileName\": \"form16_abc123.pdf\"\n        },\n        {\n            \"documentName\": \"Bank Statement\",\n            \"fileType\": \"pdf\",\n            \"filePassword\": \"\",\n            \"fileName\": \"bank_statement_xyz789.pdf\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/itrdetails/save_documents.php",
+							"host": ["{{base_url}}"],
+							"path": ["itrdetails", "save_documents.php"]
+						}
+					}
+				},
+				{
+					"name": "Get Documents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/itrdetails/get_documents.php?PanNumber={{pan_number}}",
+							"host": ["{{base_url}}"],
+							"path": ["itrdetails", "get_documents.php"],
+							"query": [
+								{
+									"key": "PanNumber",
+									"value": "{{pan_number}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Document",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": 1,\n    \"PanNumber\": \"{{pan_number}}\",\n    \"fileName\": \"form16_abc123.pdf\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/itrdetails/delete_document.php",
+							"host": ["{{base_url}}"],
+							"path": ["itrdetails", "delete_document.php"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "ITR Details",
+			"item": [
+				{
+					"name": "Get ITR by User ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/get_itrbyuser.php?userId={{user_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["get_itrbyuser.php"],
+							"query": [
+								{
+									"key": "userId",
+									"value": "{{user_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get ITR by ITR ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/get_itrbyitrid.php?itrId=1",
+							"host": ["{{base_url}}"],
+							"path": ["get_itrbyitrid.php"],
+							"query": [
+								{
+									"key": "itrId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Services",
+			"item": [
+				{
+					"name": "Add Service",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Tax Consultation\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/add_services.php",
+							"host": ["{{base_url}}"],
+							"path": ["add_services.php"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Packages",
+			"item": [
+				{
+					"name": "Get Packages",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/package/getPackages.php",
+							"host": ["{{base_url}}"],
+							"path": ["package", "getPackages.php"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Test Connection",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/test_connection.php",
+					"host": ["{{base_url}}"],
+					"path": ["test_connection.php"]
+				}
+			}
+		}
+	]
+}
+

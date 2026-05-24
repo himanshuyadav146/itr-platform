@@ -1,0 +1,48 @@
+{
+  "folders": [
+    {
+      "name": "itr-platform (root)",
+      "path": "."
+    },
+    {
+      "name": "mobile — tax_client",
+      "path": "apps/mobile/tax_client"
+    },
+    {
+      "name": "api — PHP backend",
+      "path": "apps/api"
+    },
+    {
+      "name": "admin — React dashboard",
+      "path": "apps/admin"
+    },
+    {
+      "name": "docs",
+      "path": "docs"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/vendor": true,
+      "**/.dart_tool": true,
+      "**/build": true,
+      "**/dist": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/vendor": true,
+      "**/.dart_tool": true,
+      "**/build": true,
+      "**/dist": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "dart-code.flutter",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "bmewburn.vscode-intelephense-client"
+    ]
+  }
+}

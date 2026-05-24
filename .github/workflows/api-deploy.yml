@@ -1,0 +1,28 @@
+# API — CI/CD (placeholder)
+
+> **Status:** Not configured yet. Uncomment and customize when ready to deploy.
+
+```yaml
+# name: API Deploy
+#
+# on:
+#   push:
+#     branches: [main]
+#     paths:
+#       - 'apps/api/**'
+#
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Install Composer dependencies
+#         run: composer install --no-dev --optimize-autoloader
+#         working-directory: apps/api
+#       # Deploy to cPanel/FTP — exclude config.php, payment_config.php
+#       # Config files must exist on server separately
+```
+
+**Important:** Never deploy `include/config.php` or `include/payment_config.php` from CI. Create them on the server manually.
+
+See [docs/ENVIRONMENTS.md](../docs/ENVIRONMENTS.md) and `apps/api/CPANEL_DEPLOYMENT.md`.

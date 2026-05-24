@@ -1,0 +1,40 @@
+<?php
+/**
+ * Payment Gateway Configuration (Test / Live Mode)
+ *
+ * SETUP:
+ * 1. Copy this file to payment_config.php:  cp payment_config.php.example payment_config.php
+ * 2. Set PAYMENT_MODE to 'test' or 'live'
+ * 3. Fill in Razorpay keys from https://dashboard.razorpay.com/ (Test vs Live keys)
+ * 4. Optionally set Paytm merchant IDs if using Paytm
+ * 5. Do NOT commit payment_config.php to git (add to .gitignore)
+ */
+
+// ============================================
+// Mode: 'test' | 'live'
+// - test: Use test keys; no real money
+// - live: Use live keys; real transactions
+// ============================================
+$payment_mode = 'test';
+
+// ============================================
+// Razorpay (https://dashboard.razorpay.com/)
+// Test keys: Settings → API Keys → Generate Test Key
+// Live keys: Settings → API Keys → Generate Live Key
+// ============================================
+$razorpay_key_id_test   = '';
+$razorpay_secret_test   = '';
+$razorpay_key_id_live   = '';
+$razorpay_secret_live   = '';
+
+// ============================================
+// Paytm (optional – if using Paytm gateway)
+// ============================================
+$paytm_merchant_id_test = '';
+$paytm_merchant_id_live = '';
+
+// ============================================
+// Default gateway for creating orders
+// Supported: 'razorpay' | 'paytm'
+// ============================================
+$payment_default_gateway = 'razorpay';
