@@ -1,18 +1,22 @@
 import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tax_client/core/common/widgets/core_scaffold.dart';
-import 'package:tax_client/core/config/strings/app_strings.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:tax_client/core/common/widgets/bottom_nav_bar.dart';
+import 'package:tax_client/core/common/widgets/core_scaffold.dart';
+import 'package:tax_client/core/common/widgets/custom_card.dart';
+import 'package:tax_client/core/common/widgets/primary_button.dart';
+import 'package:tax_client/core/config/strings/app_strings.dart';
+import 'package:tax_client/core/config/theme/app_colors.dart';
+import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/network/token_storage.dart';
-import 'package:tax_client/features/auth/presentation/providers/user_provider.dart';
-
-import 'package:tax_client/features/auth/presentation/providers/auth_provider.dart';
 import 'package:tax_client/core/utils/error_handler.dart';
+import 'package:tax_client/features/auth/presentation/providers/auth_provider.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_state.dart';
+import 'package:tax_client/features/auth/presentation/providers/user_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constant/api_constants.dart';
 
@@ -27,13 +31,6 @@ class MoreScreen extends ConsumerWidget {
     final url = Platform.isIOS ? appStoreUrl : playStoreUrl;
     await Share.share('Try Tax Client: $url');
   }
-
-  Future<void> _rateUs(BuildContext context) async {
-    final url = Platform.isIOS ? appStoreUrl : playStoreUrl;
-    final uri = Uri.parse(url);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
 
   Future<void> _openPrivacyPolicy() async {
     final uri = Uri.parse(ApiConstants.baseUrl + ApiConstants.itrPrivacyPolicy);
@@ -58,99 +55,89 @@ class MoreScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _showDeleteSuccessBottomSheet(BuildContext context, WidgetRef ref, String message) async {
+  Future<void> _showDeleteSuccessBottomSheet(
+    BuildContext context,
+    WidgetRef ref,
+    String message,
+  ) async {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
 
     await showModalBottomSheet(
       context: context,
-      isDismissible: false, // Prevent dismissal by tapping outside
-      enableDrag: false, // Prevent dismissal by dragging
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: AppColors.authBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       builder: (context) => PopScope(
-        canPop: false, // Prevent back button dismissal
+        canPop: false,
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 40, 24, 40),
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Red flag icon with animation effect
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  width: 92,
+                  height: 92,
                   decoration: BoxDecoration(
-                    color: Colors.red.shade50,
+                    color: AppColors.error.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.red.shade200,
+                      color: AppColors.error.withValues(alpha: 0.2),
                       width: 2,
                     ),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.flag_rounded,
-                    color: Colors.red.shade700,
-                    size: 48,
+                    color: AppColors.error,
+                    size: 42,
                   ),
                 ),
-                const SizedBox(height: 24),
-                
-                // Title
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   'Account Deleted',
                   style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: scheme.onSurface,
+                    color: AppColors.authHeading,
+                    fontWeight: FontWeight.w800,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
-                
-                // Success message
+                const SizedBox(height: AppSpacing.md),
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppColors.error.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                     border: Border.all(
-                      color: Colors.red.shade100,
+                      color: AppColors.error.withValues(alpha: 0.14),
                     ),
                   ),
                   child: Text(
                     message,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: Colors.red.shade900,
+                      color: AppColors.authHeading,
                       height: 1.5,
                     ),
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 32),
-                
-                // OK button
+                const SizedBox(height: AppSpacing.xl),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: scheme.primary,
-                      foregroundColor: scheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
+                  height: 56,
+                  child: PrimaryButton(
+                    text: 'OK',
                     onPressed: () {
                       Navigator.pop(context);
                       _logout(context, ref);
                     },
-                    child: const Text(
-                      'OK',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    borderRadius: AppSpacing.radiusPill,
+                    foregroundColor: AppColors.authButtonText,
+                    gradient: const LinearGradient(
+                      colors: [AppColors.authMint, AppColors.authMintDark],
                     ),
                   ),
                 ),
@@ -162,29 +149,35 @@ class MoreScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showDeleteConfirmation(BuildContext context, WidgetRef ref) async {
+  Future<void> _showDeleteConfirmation(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final userAsync = ref.read(userProvider);
-    
+
     final userId = userAsync.maybeWhen(
       data: (user) => user?.id,
       orElse: () => null,
     );
 
     if (userId == null) {
-      ErrorHandler.showError(context, 'User information not found. Please try again.');
+      ErrorHandler.showError(
+        context,
+        'User information not found. Please try again.',
+      );
       return;
     }
 
     showModalBottomSheet(
       context: context,
+      backgroundColor: AppColors.authBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 20),
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,49 +185,54 @@ class MoreScreen extends ConsumerWidget {
               Text(
                 AppStrings.confirmDeleteAccountTitle,
                 style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  color: AppColors.authHeading,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 AppStrings.confirmDeleteAccountWarning,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.red.shade800,
+                  color: AppColors.error,
                   fontWeight: FontWeight.w600,
+                  height: 1.45,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.xl),
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.authHeading,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusLg,
+                          ),
+                          side: const BorderSide(color: AppColors.borderOnDark),
                         ),
                       ),
                       onPressed: () => Navigator.pop(context),
                       child: const Text('Cancel'),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: scheme.error,
-                        foregroundColor: scheme.onError,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                    child: SizedBox(
+                      height: 52,
+                      child: PrimaryButton(
+                        text: 'Delete Account',
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await ref
+                              .read(authViewModelProvider.notifier)
+                              .deleteAccount(userId);
+                        },
+                        color: AppColors.error,
+                        foregroundColor: AppColors.textOnDark,
+                        borderRadius: AppSpacing.radiusLg,
                       ),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await ref.read(authViewModelProvider.notifier).deleteAccount(userId);
-                      },
-                      child: const Text('Delete Account'),
                     ),
                   ),
                 ],
@@ -248,139 +246,102 @@ class MoreScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final userAsync = ref.watch(userProvider);
 
     ref.listen<AuthState>(authViewModelProvider, (previous, next) {
       if (next is AuthError) {
         ErrorHandler.showError(context, next.message);
       } else if (next is AuthDeleteSuccess) {
-        // Show success message in beautiful bottom sheet
         _showDeleteSuccessBottomSheet(context, ref, next.message);
       } else if (next is AuthInitial && previous is AuthLoading) {
-        // If it returns to AuthInitial from loading, it means logout was successful
-        // Handling navigation to login
         context.go('/login');
       }
     });
 
     return CoreScaffold(
-      title: AppStrings.more,
-      showBackButton: true,
-      onBack: () => context.go('/dashboard'),
+      includeAppBar: false,
+      backgroundColor: AppColors.authBackground,
       useScrollView: true,
       centered: false,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+      ),
       bottomNavigationBar: const BottomNavBar(),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// User Card Modern
-          userAsync.when(
-            data: (user) => Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: LinearGradient(
-                  colors: [
-                    scheme.primary.withOpacity(0.15),
-                    scheme.surfaceContainerHigh,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border.all(color: scheme.outlineVariant),
-              ),
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: scheme.primary.withOpacity(0.20),
-                    child: Icon(
-                      Icons.person_rounded,
-                      size: 34,
-                      color: scheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          (user?.name != null && user!.name.trim().isNotEmpty)
-                              ? user.name
-                              : 'Guest User',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${user?.email ?? ''}\n${user?.mobile ?? ''}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurface.withOpacity(0.7),
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, _) => Center(child: Text('Error loading user: $err')),
+          _MoreHeader(
+            onBack: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/');
+              }
+            },
           ),
-
-          const SizedBox(height: 20),
-
-          /// Modern Tiles
-          // _MoreTile(
-          //   icon: Icons.help_outline_rounded,
-          //   label: AppStrings.faqs,
-          //   onTap: () {},
-          // ),
+          const SizedBox(height: AppSpacing.xl),
+          userAsync.when(
+            data: (user) => _MoreProfileCard(
+              name:
+                  (user?.name != null && user!.name.trim().isNotEmpty)
+                      ? user.name
+                      : 'Guest User',
+              email: user?.email ?? '',
+              mobile: user?.mobile ?? '',
+            ),
+            loading: () => const _MoreLoadingCard(),
+            error: (err, _) => _MoreErrorCard(message: 'Error loading user: $err'),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          _MoreSectionTitle(
+            title: 'Support & information',
+            subtitle: 'Quick links for app details, policies, and support.',
+          ),
+          const SizedBox(height: AppSpacing.md),
           _MoreTile(
             icon: Icons.share_rounded,
             label: AppStrings.shareApp,
+            subtitle: 'Send the app link to friends or family.',
             onTap: _shareApp,
           ),
-          // _MoreTile(
-          //   icon: Icons.payment_rounded,
-          //   label: AppStrings.customPayment,
-          //   onTap: () {},
-          // ),
-          // _MoreTile(
-          //   icon: Icons.star_border_rounded,
-          //   label: AppStrings.rateUs,
-          //   onTap: () => _rateUs(context),
-          // ),
           _MoreTile(
             icon: Icons.info_outline_rounded,
             label: AppStrings.aboutUs,
+            subtitle: 'Learn more about the ITR platform and team.',
             onTap: _openAboutUS,
           ),
           _MoreTile(
             icon: Icons.privacy_tip_outlined,
             label: AppStrings.privacyPolicy,
+            subtitle: 'Read how your information is protected.',
             onTap: _openPrivacyPolicy,
           ),
           _MoreTile(
             icon: Icons.support_agent_rounded,
             label: AppStrings.contactSupport,
+            subtitle: 'Reach the team if you need help with filing.',
             onTap: _openContactUs,
           ),
+          const SizedBox(height: AppSpacing.lg),
+          _MoreSectionTitle(
+            title: 'Account actions',
+            subtitle: 'Manage your session and account-level preferences.',
+          ),
+          const SizedBox(height: AppSpacing.md),
           _MoreTile(
             icon: Icons.person_remove_rounded,
             label: AppStrings.deleteAccountPermanently,
+            subtitle: 'Permanently remove your account and associated data.',
             danger: true,
             onTap: () => _showDeleteConfirmation(context, ref),
           ),
           _MoreTile(
             icon: Icons.logout_rounded,
             label: AppStrings.logout,
+            subtitle: 'Sign out from this device.',
             danger: true,
             onTap: () => _logout(context, ref),
           ),
@@ -390,15 +351,241 @@ class MoreScreen extends ConsumerWidget {
   }
 }
 
+class _MoreHeader extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _MoreHeader({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        IconButton(
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          style: IconButton.styleFrom(
+            backgroundColor: AppColors.surfaceVariantDark,
+            foregroundColor: AppColors.authHeading,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppStrings.more,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: AppColors.authHeading,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Manage support links, account settings, and session actions.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.authMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MoreProfileCard extends StatelessWidget {
+  final String name;
+  final String email;
+  final String mobile;
+
+  const _MoreProfileCard({
+    required this.name,
+    required this.email,
+    required this.mobile,
+  });
+
+  String _initials(String value) {
+    final parts = value
+        .split(' ')
+        .where((part) => part.trim().isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return 'GU';
+    if (parts.length == 1) {
+      final single = parts.first;
+      return single.substring(0, single.length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppSpacing.radius2xl),
+        gradient: AppColors.profileCardGradient(theme.colorScheme),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Row(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                _initials(name),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: AppColors.textOnDark,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: AppColors.textOnDark,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (email.trim().isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    email,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textOnDarkMuted,
+                    ),
+                  ),
+                ],
+                if (mobile.trim().isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    mobile,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textOnDarkMuted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MoreLoadingCard extends StatelessWidget {
+  const _MoreLoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return CustomCard(
+      backgroundColor: AppColors.authCardSurface,
+      border: Border.all(color: AppColors.authCardBorder),
+      child: Column(
+        children: [
+          const CircularProgressIndicator(color: AppColors.authMint),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Loading your profile...',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: AppColors.authHeading,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MoreErrorCard extends StatelessWidget {
+  final String message;
+
+  const _MoreErrorCard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return CustomCard(
+      backgroundColor: const Color(0x08FFFFFF),
+      border: Border.all(color: AppColors.borderOnDark),
+      child: Text(
+        message,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: AppColors.authMuted,
+          height: 1.45,
+        ),
+      ),
+    );
+  }
+}
+
+class _MoreSectionTitle extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _MoreSectionTitle({
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: AppColors.authHeading,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          subtitle,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.authMuted,
+            height: 1.45,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MoreTile extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String subtitle;
   final VoidCallback onTap;
   final bool danger;
 
   const _MoreTile({
     required this.icon,
     required this.label,
+    required this.subtitle,
     required this.onTap,
     this.danger = false,
   });
@@ -406,52 +593,62 @@ class _MoreTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final accent = danger ? AppColors.error : AppColors.authMint;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: scheme.surfaceContainerLow,
-        border: Border.all(color: scheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.primary.withOpacity(0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+    return CustomCard(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: EdgeInsets.zero,
+      backgroundColor: const Color(0x08FFFFFF),
+      border: Border.all(color: AppColors.borderOnDark),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  icon,
-                  size: 28,
-                  color: danger ? scheme.error : scheme.primary,
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                  ),
+                  child: Icon(icon, color: accent),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
-                  child: Text(
-                    label,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: danger ? scheme.error : scheme.onSurface,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: danger
+                              ? AppColors.error
+                              : AppColors.authHeading,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        subtitle,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authMuted,
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+                const SizedBox(width: AppSpacing.md),
                 Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 16,
-                  color: danger
-                      ? scheme.error
-                      : scheme.onSurface.withOpacity(0.7),
+                  color: danger ? AppColors.error : AppColors.authMuted,
                 ),
               ],
             ),

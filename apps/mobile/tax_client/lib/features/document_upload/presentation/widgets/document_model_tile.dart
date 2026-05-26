@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tax_client/core/common/widgets/custom_card.dart';
+import 'package:tax_client/core/common/widgets/document_viewer_modal.dart';
+import 'package:tax_client/core/config/theme/app_colors.dart';
+import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/network/token_storage.dart';
 import 'package:tax_client/core/utils/document_url_helper.dart';
-import 'package:tax_client/core/common/widgets/document_viewer_modal.dart';
 
 import '../../data/models/document_model.dart';
 
@@ -18,100 +21,110 @@ class DocumentModelTile extends ConsumerWidget {
 
   bool _isPdf(String path) {
     final lowerPath = path.toLowerCase();
-    return lowerPath.endsWith('.pdf') || lowerPath.contains('.pdf?') || lowerPath.contains('/pdf');
+    return lowerPath.endsWith('.pdf') ||
+        lowerPath.contains('.pdf?') ||
+        lowerPath.contains('/pdf');
   }
 
   bool _isImage(String path) {
     final lowerPath = path.toLowerCase();
-    return lowerPath.endsWith('.jpg') || 
-           lowerPath.endsWith('.jpeg') || 
-           lowerPath.endsWith('.png') ||
-           lowerPath.contains('.jpg?') ||
-           lowerPath.contains('.jpeg?') ||
-           lowerPath.contains('.png?');
+    return lowerPath.endsWith('.jpg') ||
+        lowerPath.endsWith('.jpeg') ||
+        lowerPath.endsWith('.png') ||
+        lowerPath.contains('.jpg?') ||
+        lowerPath.contains('.jpeg?') ||
+        lowerPath.contains('.png?');
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final fileName = document.fileName ?? '';
+    final theme = Theme.of(context);
+    final fileName = document.fileName ?? 'Unknown';
     final isPdf = document.fileType.toLowerCase() == 'pdf' || _isPdf(fileName);
-    final isImage = ['jpg', 'jpeg', 'png'].contains(document.fileType.toLowerCase()) || _isImage(fileName);
+    final isImage =
+        ['jpg', 'jpeg', 'png'].contains(document.fileType.toLowerCase()) ||
+        _isImage(fileName);
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        // ── Thumbnail (tappable) ────────────────────────────────
-        leading: FutureBuilder<String?>(
-          future: ref.read(tokenStorageProvider).getPanNumber(),
-          builder: (context, snapshot) {
-            final pan = snapshot.data;
-            final fileName = document.fileName;
+    return FutureBuilder<String?>(
+      future: ref.read(tokenStorageProvider).getPanNumber(),
+      builder: (context, snapshot) {
+        final pan = snapshot.data;
+        final viewUrl =
+            (pan != null && pan.isNotEmpty && document.fileName != null)
+            ? DocumentUrlHelper.getDocumentUrl(
+                panNumber: pan,
+                fileName: document.fileName!,
+              )
+            : null;
 
-            // Build the view URL if we have both PAN and fileName
-            final viewUrl = (pan != null && pan.isNotEmpty && fileName != null)
-                ? DocumentUrlHelper.getDocumentUrl(
-                    panNumber: pan,
-                    fileName: fileName,
-                  )
-                : null;
-
-            Widget thumbnail = _buildThumbnailIcon(isImage, isPdf, viewUrl);
-
-            // Make thumbnail tappable to open full viewer
-            if (viewUrl != null) {
-              thumbnail = GestureDetector(
-                onTap: () => DocumentViewerModal.show(
-                  context,
-                  url: viewUrl,
-                  fileName: document.fileName ?? 'Document',
-                  isPdf: isPdf,
+        return CustomCard(
+          padding: EdgeInsets.zero,
+          backgroundColor: AppColors.surfaceVariantDark.withValues(alpha: 0.18),
+          border: Border.all(color: AppColors.borderOnDark),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+              onTap: viewUrl == null
+                  ? null
+                  : () {
+                      DocumentViewerModal.show(
+                        context,
+                        url: viewUrl,
+                        fileName: fileName,
+                        isPdf: isPdf,
+                      );
+                    },
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      child: _buildThumbnailIcon(isImage, isPdf, viewUrl),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fileName,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: AppColors.authHeading,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            document.documentName ?? 'Uploaded document',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.authMuted,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    IconButton(
+                      onPressed: onDelete,
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.error.withValues(
+                          alpha: 0.12,
+                        ),
+                        foregroundColor: AppColors.error,
+                      ),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                    ),
+                  ],
                 ),
-                child: thumbnail,
-              );
-            }
-
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: thumbnail,
-            );
-          },
-        ),
-        title: Text(
-          document.fileName ?? 'Unknown',
-          style: const TextStyle(fontWeight: FontWeight.w500),
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          document.documentName ?? '',
-          style: TextStyle(
-            fontSize: 12,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
           ),
-        ),
-        // ── Tap whole tile to open viewer too ──────────────────
-        onTap: () async {
-          final pan = await ref.read(tokenStorageProvider).getPanNumber();
-          if (pan == null || pan.isEmpty || document.fileName == null) return;
-          final viewUrl = DocumentUrlHelper.getDocumentUrl(
-            panNumber: pan,
-            fileName: document.fileName!,
-          );
-          if (context.mounted) {
-            DocumentViewerModal.show(
-              context,
-              url: viewUrl,
-              fileName: document.fileName ?? 'Document',
-              isPdf: isPdf,
-            );
-          }
-        },
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-          onPressed: onDelete,
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -119,8 +132,8 @@ class DocumentModelTile extends ConsumerWidget {
     if (isImage && viewUrl != null) {
       return Image.network(
         viewUrl,
-        width: 50,
-        height: 50,
+        width: 52,
+        height: 52,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _fileIcon(isPdf),
       );
@@ -130,12 +143,14 @@ class DocumentModelTile extends ConsumerWidget {
 
   Widget _fileIcon(bool isPdf) {
     return Container(
-      width: 50,
-      height: 50,
-      color: Colors.grey[200],
-      child: isPdf
-          ? const Icon(Icons.picture_as_pdf, color: Colors.redAccent, size: 28)
-          : const Icon(Icons.insert_drive_file, size: 28),
+      width: 52,
+      height: 52,
+      color: AppColors.surfaceDark,
+      child: Icon(
+        isPdf ? Icons.picture_as_pdf_rounded : Icons.insert_drive_file_rounded,
+        color: isPdf ? AppColors.authAmber : AppColors.authHeading,
+        size: 28,
+      ),
     );
   }
 }

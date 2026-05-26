@@ -1,44 +1,50 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../../core/common/widgets/core_scaffold.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/common/widgets/primary_button.dart';
-import '../../../../core/common/widgets/custom_card.dart';
-import '../../../../core/utils/error_handler.dart';
-import '../../providers/documents_provider.dart';
-import '../../presentation/providers/document_upload_provider.dart';
-import '../../presentation/providers/document_upload_state.dart';
-import '../widgets/document_tile.dart';
-import '../widgets/document_model_tile.dart';
-import 'package:tax_client/features/personal_info/presentation/providers/personal_info_provider.dart';
-import 'package:tax_client/core/common/enums/journey_type.dart';
+import 'package:tax_client/core/common/widgets/core_scaffold.dart';
+import 'package:tax_client/core/common/widgets/custom_card.dart';
+import 'package:tax_client/core/common/widgets/primary_button.dart';
 import 'package:tax_client/core/config/strings/app_strings.dart';
+import 'package:tax_client/core/config/theme/app_colors.dart';
+import 'package:tax_client/core/config/theme/app_spacing.dart';
+import 'package:tax_client/core/utils/error_handler.dart';
 import 'package:tax_client/features/document_upload/data/models/document_model.dart';
+import 'package:tax_client/features/document_upload/presentation/providers/document_upload_provider.dart';
+import 'package:tax_client/features/document_upload/presentation/providers/document_upload_state.dart';
+import 'package:tax_client/features/document_upload/presentation/widgets/document_model_tile.dart';
+import 'package:tax_client/features/document_upload/presentation/widgets/document_tile.dart';
+import 'package:tax_client/features/document_upload/providers/documents_provider.dart';
 import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
+import 'package:tax_client/features/personal_info/presentation/providers/personal_info_provider.dart';
 
 class UploadDocumentsScreen extends ConsumerStatefulWidget {
-  const UploadDocumentsScreen({Key? key}) : super(key: key);
+  const UploadDocumentsScreen({super.key});
 
   @override
-  ConsumerState<UploadDocumentsScreen> createState() => _UploadDocumentsScreenState();
+  ConsumerState<UploadDocumentsScreen> createState() =>
+      _UploadDocumentsScreenState();
 }
 
 class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
-  // Store fetched documents from server
   List<DocumentModel> _fetchedDocuments = [];
+
+  static const Map<String, String> _categorySubtitles = {
+    'form16a':
+        'Upload salary, interest, or TDS-related statements for the filing.',
+    'form16b':
+        'Attach property sale or transaction certificates if they apply.',
+    'others':
+        'Add bank statements, proofs, deductions, or any supporting files.',
+  };
 
   @override
   void initState() {
     super.initState();
-    // Fetch documents when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(documentUploadViewModelProvider.notifier).fetchDocuments();
     });
   }
 
-  // Helper method to map document name to category key
   String _getCategoryKey(String? documentName) {
     if (documentName == null || documentName.isEmpty) {
       return 'others';
@@ -46,269 +52,307 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
     final name = documentName.toLowerCase();
     if (name.contains('form 16-a') || name.contains('form16a')) {
       return 'form16a';
-    } else if (name.contains('form 16-b') || name.contains('form16b')) {
-      return 'form16b';
-    } else {
-      return 'others';
     }
+    if (name.contains('form 16-b') || name.contains('form16b')) {
+      return 'form16b';
+    }
+    return 'others';
   }
 
-  // Get documents for a specific category
   List<DocumentModel> _getDocumentsForCategory(String categoryKey) {
     return _fetchedDocuments
         .where((doc) => _getCategoryKey(doc.documentName) == categoryKey)
         .toList();
   }
 
+  Future<void> _pickAndUpload(String categoryKey) async {
+    final notifier = ref.read(documentsProvider.notifier);
+    final beforeCount = ref.read(documentsProvider)[categoryKey]!.files.length;
+    await notifier.pickDocument(categoryKey);
+    final files = ref.read(documentsProvider)[categoryKey]!.files;
+    if (files.length <= beforeCount) {
+      return;
+    }
+
+    final file = files.last;
+    ref
+        .read(documentUploadViewModelProvider.notifier)
+        .uploadDocument(
+          documentCategory: categoryKey,
+          fileName: categoryKey,
+          file: file,
+        );
+  }
+
+  int _totalDocumentCount(Map<String, DocumentCategory> documents) {
+    final localCount = documents.values.fold<int>(
+      0,
+      (sum, category) => sum + category.files.length,
+    );
+    return localCount + _fetchedDocuments.length;
+  }
+
+  void _handleSubmit(bool isAnyLoading) {
+    if (isAnyLoading) {
+      return;
+    }
+
+    var hasDocuments = _fetchedDocuments.isNotEmpty;
+    if (!hasDocuments) {
+      hasDocuments = ref
+          .read(documentUploadViewModelProvider.notifier)
+          .hasUploadedDocuments();
+    }
+
+    if (!hasDocuments) {
+      ErrorHandler.showError(
+        context,
+        'Please upload at least one document to proceed.',
+      );
+      return;
+    }
+
+    final journeyType = ref.read(journeyTypeProvider);
+    ref
+        .read(documentUploadViewModelProvider.notifier)
+        .saveAllDocuments(
+          existingDocuments: _fetchedDocuments,
+          journeyType: journeyType.apiValue,
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final documents = ref.watch(documentsProvider);
     final notifier = ref.read(documentsProvider.notifier);
     final uploadState = ref.watch(documentUploadViewModelProvider);
-    
-    // Check for different loading states
+    final selectedPackage = ref.watch(selectedPackageProvider);
+
     final isLoading = uploadState is DocumentsLoading;
     final isSaving = uploadState is DocumentsSaving;
     final isUploading = uploadState is DocumentUploading;
     final isDeleting = uploadState is DocumentDeleting;
-    final isAnyLoading = isLoading || isSaving || isUploading || isDeleting;
+    final isBusy = isSaving || isUploading || isDeleting;
+    final totalDocuments = _totalDocumentCount(documents);
 
-    // Listen to upload state changes
-    ref.listen<DocumentUploadState>(
-      documentUploadViewModelProvider,
-      (previous, next) {
-        if (next is DocumentsLoaded) {
-          // Store fetched documents
-          setState(() {
-            _fetchedDocuments = next.documents;
-          });
-        } else if (next is DocumentUploadSuccess) {
-          ErrorHandler.showSuccess(
-            context,
-            '${next.fileName} ${AppStrings.uploadedSuccessfully}',
-          );
-        } else if (next is DocumentDeleted) {
-          ErrorHandler.showSuccess(context, next.message);
-          // Remove from fetched documents
-          setState(() {
-            _fetchedDocuments.removeWhere((doc) => doc.docId == next.docId);
-          });
-        } else if (next is DocumentsSaveSuccess) {
-          ErrorHandler.showSuccess(context, next.message);
-          // Only navigate after successful API response
-          if (context.mounted) {
-            final selectedPackage = ref.read(selectedPackageProvider);
-            final packageId = selectedPackage?.id ?? '1';
-            context.push('/payment?packageId=$packageId');
-          }
-        } else if (next is DocumentUploadError) {
-          ErrorHandler.showError(context, next.message);
+    ref.listen<DocumentUploadState>(documentUploadViewModelProvider, (
+      previous,
+      next,
+    ) {
+      if (next is DocumentsLoaded) {
+        setState(() {
+          _fetchedDocuments = next.documents;
+        });
+      } else if (next is DocumentUploadSuccess) {
+        ErrorHandler.showSuccess(
+          context,
+          '${next.fileName} ${AppStrings.uploadedSuccessfully}',
+        );
+      } else if (next is DocumentDeleted) {
+        ErrorHandler.showSuccess(context, next.message);
+        setState(() {
+          _fetchedDocuments.removeWhere((doc) => doc.docId == next.docId);
+        });
+      } else if (next is DocumentsSaveSuccess) {
+        ErrorHandler.showSuccess(context, next.message);
+        if (context.mounted) {
+          final packageId = ref.read(selectedPackageProvider)?.id ?? '1';
+          context.push('/payment?packageId=$packageId');
         }
-      },
-    );
+      } else if (next is DocumentUploadError) {
+        ErrorHandler.showError(context, next.message);
+      }
+    });
 
-    final scheme = Theme.of(context).colorScheme;
-    
-    // Show loader when fetching documents
     if (isLoading) {
       return CoreScaffold(
-        title: AppStrings.uploadDocuments,
-        centerTitle: true,
+        includeAppBar: false,
+        backgroundColor: AppColors.authBackground,
+        centered: false,
+        useScrollView: false,
+        padding: const EdgeInsets.all(AppSpacing.lg),
         body: const Center(
-          child: CircularProgressIndicator(),
+          child: CircularProgressIndicator(color: AppColors.authMint),
         ),
       );
     }
 
     return CoreScaffold(
-      title: AppStrings.uploadDocuments,
-      centerTitle: true,
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-        child: PrimaryButton(
-          text: AppStrings.submitAllDocuments,
-          isLoading: isSaving,
-          onPressed: isAnyLoading
-              ? () {}
-              : () {
-                  // VALIDATION: Check if at least one document exists
-                  bool hasDocuments = false;
-                  // Check server documents
-                  if (_fetchedDocuments.isNotEmpty) {
-                    hasDocuments = true;
-                  }
-                  // Check locally uploaded documents (in viewmodel)
-                  if (!hasDocuments) {
-                    hasDocuments = ref
-                        .read(documentUploadViewModelProvider.notifier)
-                        .hasUploadedDocuments();
-                  }
-
-                  if (!hasDocuments) {
-                    ErrorHandler.showError(
-                      context,
-                      'Please upload at least one document to proceed.',
-                    );
-                    return;
-                  }
-
-                  final journeyType = ref.read(journeyTypeProvider);
-                  ref
-                      .read(documentUploadViewModelProvider.notifier)
-                      .saveAllDocuments(
-                        existingDocuments: _fetchedDocuments,
-                        journeyType: journeyType.apiValue,
-                      );
-                },
-        ),
-      ),
-      backgroundColor: null,
+      includeAppBar: false,
+      backgroundColor: AppColors.authBackground,
       useScrollView: false,
       centered: false,
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.zero,
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        child: SizedBox(
+          height: 56,
+          child: PrimaryButton(
+            text: 'SUBMIT ALL DOCUMENTS',
+            isLoading: isSaving,
+            onPressed: isBusy ? null : () => _handleSubmit(isBusy),
+            borderRadius: AppSpacing.radiusPill,
+            foregroundColor: AppColors.authButtonText,
+            textStyle: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.4,
+            ),
+            gradient: const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [AppColors.authMint, AppColors.authMintDark],
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x334EDEA3),
+                blurRadius: 20,
+                spreadRadius: -6,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          SingleChildScrollView(
-            child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(2),
+          CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.xl,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _DocumentUploadHeader(
+                        onBack: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/');
+                          }
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      _DocumentUploadHeroCard(
+                        packageName:
+                            selectedPackage?.name ??
+                            'Package will be used for payment',
+                        totalDocuments: totalDocuments,
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                AppStrings.attachTaxDocuments,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  color: Theme.of(context).colorScheme.primary,
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  AppSpacing.xl,
+                ),
+                sliver: SliverList.separated(
+                  itemCount: documents.keys.length,
+                  itemBuilder: (context, index) {
+                    final categoryKey = documents.keys.elementAt(index);
+                    final category = documents[categoryKey]!;
+                    final serverDocuments = _getDocumentsForCategory(
+                      categoryKey,
+                    );
+
+                    return _DocumentCategoryCard(
+                      title: category.title,
+                      subtitle:
+                          _categorySubtitles[categoryKey] ??
+                          'Attach the files required for this step.',
+                      serverCount: serverDocuments.length,
+                      localCount: category.files.length,
+                      isUploading: isUploading,
+                      onUpload: () => _pickAndUpload(categoryKey),
+                      child: (category.files.isEmpty && serverDocuments.isEmpty)
+                          ? const _DocumentEmptyState()
+                          : Column(
+                              children: [
+                                ...serverDocuments.map(
+                                  (doc) => Padding(
+                                    padding: const EdgeInsets.only(
+                                      bottom: AppSpacing.sm,
+                                    ),
+                                    child: DocumentModelTile(
+                                      document: doc,
+                                      onDelete: () {
+                                        if (doc.docId != null &&
+                                            doc.fileName != null) {
+                                          ref
+                                              .read(
+                                                documentUploadViewModelProvider
+                                                    .notifier,
+                                              )
+                                              .deleteDocument(
+                                                docId: doc.docId!,
+                                                fileName: doc.fileName!,
+                                              );
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                ...category.files.map(
+                                  (file) => Padding(
+                                    padding: const EdgeInsets.only(
+                                      bottom: AppSpacing.sm,
+                                    ),
+                                    child: DocumentTile(
+                                      file: file,
+                                      onDelete: () => notifier.removeDocument(
+                                        categoryKey,
+                                        file,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                    );
+                  },
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: AppSpacing.lg),
                 ),
               ),
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            AppStrings.uploadSubtitle,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: scheme.onSurface.withOpacity(0.7),
-            ),
-          ),
-          const SizedBox(height: 25),
-
-          // SECTION 1: Form 16-A
-          _buildCategorySection(
-            context,
-            categoryKey: 'form16a',
-            title: documents['form16a']!.title,
-            files: documents['form16a']!.files,
-            serverDocuments: _getDocumentsForCategory('form16a'),
-            isUploading: isUploading,
-            onUpload: () async {
-              await notifier.pickDocument('form16a');
-              final files = ref.read(documentsProvider)['form16a']!.files;
-              if (files.isNotEmpty) {
-                final file = files.last;
-                ref.read(documentUploadViewModelProvider.notifier).uploadDocument(
-                      documentCategory: 'form16a',
-                      fileName: 'form16a',
-                      file: file,
-                    );
-              }
-            },
-            onDeleteFile: (file) => notifier.removeDocument('form16a', file),
-            onDeleteDocument: (doc) {
-              if (doc.docId != null && doc.fileName != null) {
-                ref.read(documentUploadViewModelProvider.notifier).deleteDocument(
-                      docId: doc.docId!,
-                      fileName: doc.fileName!,
-                    );
-              }
-            },
-          ),
-
-          const SizedBox(height: 25),
-
-          // SECTION 2: Form 16-B
-          _buildCategorySection(
-            context,
-            categoryKey: 'form16b',
-            title: documents['form16b']!.title,
-            files: documents['form16b']!.files,
-            serverDocuments: _getDocumentsForCategory('form16b'),
-            isUploading: isUploading,
-            onUpload: () async {
-              await notifier.pickDocument('form16b');
-              final files = ref.read(documentsProvider)['form16b']!.files;
-              if (files.isNotEmpty) {
-                final file = files.last;
-                ref.read(documentUploadViewModelProvider.notifier).uploadDocument(
-                      documentCategory: 'form16b',
-                      fileName: 'form16b',
-                      file: file,
-                    );
-              }
-            },
-            onDeleteFile: (file) => notifier.removeDocument('form16b', file),
-            onDeleteDocument: (doc) {
-              if (doc.docId != null && doc.fileName != null) {
-                ref.read(documentUploadViewModelProvider.notifier).deleteDocument(
-                      docId: doc.docId!,
-                      fileName: doc.fileName!,
-                    );
-              }
-            },
-          ),
-
-          const SizedBox(height: 25),
-
-          // SECTION 3: Other Documents
-          _buildCategorySection(
-            context,
-            categoryKey: 'others',
-            title: documents['others']!.title,
-            files: documents['others']!.files,
-            serverDocuments: _getDocumentsForCategory('others'),
-            isUploading: isUploading,
-            onUpload: () async {
-              await notifier.pickDocument('others');
-              final files = ref.read(documentsProvider)['others']!.files;
-              if (files.isNotEmpty) {
-                final file = files.last;
-                ref.read(documentUploadViewModelProvider.notifier).uploadDocument(
-                      documentCategory: 'others',
-                      fileName: 'others',
-                      file: file,
-                    );
-              }
-            },
-            onDeleteFile: (file) => notifier.removeDocument('others', file),
-            onDeleteDocument: (doc) {
-              if (doc.docId != null && doc.fileName != null) {
-                ref.read(documentUploadViewModelProvider.notifier).deleteDocument(
-                      docId: doc.docId!,
-                      fileName: doc.fileName!,
-                    );
-              }
-            },
-          ),
-            ],
-          ),
-          ),
-          // Show loading overlay during API operations (except initial load)
-          if (isUploading || isSaving || isDeleting)
+          if (isBusy)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.3),
-                child: const Center(
-                  child: CircularProgressIndicator(),
+                color: Colors.black.withValues(alpha: 0.32),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(
+                        color: AppColors.authMint,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        isSaving
+                            ? 'Saving your documents...'
+                            : isUploading
+                            ? 'Uploading document...'
+                            : 'Updating document list...',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authHeading,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -316,89 +360,324 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
       ),
     );
   }
+}
 
-  Widget _buildCategorySection(
-    BuildContext context, {
-    required String categoryKey,
-    required String title,
-    required List<File> files,
-    required List<DocumentModel> serverDocuments,
-    required bool isUploading,
-    required VoidCallback onUpload,
-    required Function(File) onDeleteFile,
-    required Function(DocumentModel) onDeleteDocument,
-  }) {
-    final hasFiles = files.isNotEmpty || serverDocuments.isNotEmpty;
-    
-    return CustomCard(
-      padding: const EdgeInsets.all(16),
-      // decoration removed as it's inside CustomCard
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+class _DocumentUploadHeader extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _DocumentUploadHeader({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        IconButton(
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          style: IconButton.styleFrom(
+            backgroundColor: AppColors.surfaceVariantDark,
+            foregroundColor: AppColors.authHeading,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700, // Made bolder to match design
+                AppStrings.uploadDocuments,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: AppColors.authHeading,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              TextButton(
-                onPressed: isUploading ? null : onUpload,
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.black, // Dark background like "Join" button
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-                child: const Text(
-                  AppStrings.upload,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Attach the documents needed before moving to payment.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.authMuted,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          if (!hasFiles)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Text(
-                  AppStrings.noFiles,
-                  style: TextStyle(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.6),
-                  ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DocumentUploadHeroCard extends StatelessWidget {
+  final String packageName;
+  final int totalDocuments;
+
+  const _DocumentUploadHeroCard({
+    required this.packageName,
+    required this.totalDocuments,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return CustomCard(
+      backgroundColor: AppColors.authCardSurface,
+      border: Border.all(color: AppColors.authCardBorder),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppStrings.attachTaxDocuments,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: AppColors.authHeading,
+              fontWeight: FontWeight.w800,
+              height: 1.15,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            AppStrings.uploadSubtitle,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: AppColors.authMuted,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _DocumentInfoChip(
+                icon: Icons.inventory_2_outlined,
+                label: packageName,
+                accent: AppColors.authMint,
+              ),
+              _DocumentInfoChip(
+                icon: Icons.folder_copy_outlined,
+                label:
+                    '$totalDocuments document${totalDocuments == 1 ? '' : 's'} attached',
+                accent: AppColors.authAmber,
+              ),
+              const _DocumentInfoChip(
+                icon: Icons.verified_user_outlined,
+                label: 'PDF, JPG, PNG supported',
+                accent: AppColors.authHeading,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DocumentCategoryCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final int serverCount;
+  final int localCount;
+  final bool isUploading;
+  final VoidCallback onUpload;
+  final Widget child;
+
+  const _DocumentCategoryCard({
+    required this.title,
+    required this.subtitle,
+    required this.serverCount,
+    required this.localCount,
+    required this.isUploading,
+    required this.onUpload,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return CustomCard(
+      backgroundColor: const Color(0x08FFFFFF),
+      border: Border.all(color: AppColors.borderOnDark),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: AppColors.authHeading,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.authMuted,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            )
-          else
-            Column(
-              children: [
-                // Show server documents first
-                ...serverDocuments.map(
-                  (doc) => DocumentModelTile(
-                    document: doc,
-                    onDelete: () => onDeleteDocument(doc),
+              const SizedBox(width: AppSpacing.md),
+              TextButton.icon(
+                onPressed: isUploading ? null : onUpload,
+                style: TextButton.styleFrom(
+                  backgroundColor: AppColors.surfaceVariantDark,
+                  foregroundColor: AppColors.authHeading,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
                   ),
                 ),
-                // Show local files
-                ...files.map(
-                  (f) => DocumentTile(
-                    file: f,
-                    onDelete: () => onDeleteFile(f),
-                  ),
+                icon: const Icon(Icons.upload_file_rounded, size: 18),
+                label: const Text(
+                  AppStrings.upload,
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _DocumentCountChip(
+                icon: Icons.cloud_done_outlined,
+                label: '$serverCount saved',
+              ),
+              _DocumentCountChip(
+                icon: Icons.schedule_outlined,
+                label: '$localCount local',
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _DocumentEmptyState extends StatelessWidget {
+  const _DocumentEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariantDark.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.file_open_outlined,
+            color: AppColors.authMuted,
+            size: 30,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            AppStrings.noFiles,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.authMuted,
+              fontWeight: FontWeight.w600,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DocumentInfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color accent;
+
+  const _DocumentInfoChip({
+    required this.icon,
+    required this.label,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: accent),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.authHeading,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DocumentCountChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _DocumentCountChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariantDark.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.authMuted),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.authMuted,
+            ),
+          ),
         ],
       ),
     );
