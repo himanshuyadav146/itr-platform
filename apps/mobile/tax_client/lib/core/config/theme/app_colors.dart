@@ -16,6 +16,25 @@ class AppColors {
   static const primaryDark = Color(0xFF2962FF);
   static const secondary = Color(0xFFFF7D2E);
 
+  // Auth refactor (latest premium login treatment)
+  static const authBackground = Color(0xFF0B1326);
+  static const authCardSurface = Color(0x99131B2E);
+  static const authHeading = Color(0xFFDAE2FD);
+  static const authMuted = Color(0xFFBBCABF);
+  static const authMutedSoft = Color(0x66BBCABF);
+  static const authInputFill = Color(0xFFFFFFFF);
+  static const authInputText = Color(0xFF0B1326);
+  static const authInputBorder = Color(0xFF6B7280);
+  static const authMint = Color(0xFF4EDEA3);
+  static const authMintDark = Color(0xFF10B981);
+  static const authAmber = Color(0xFFFFB95F);
+  static const authButtonText = Color(0xFF003824);
+  static const authCheckboxFill = Color(0xFF2D3449);
+  static const authCheckboxBorder = Color(0xFF3C4A42);
+  static const authGlowMint = Color(0x0D4EDEA3);
+  static const authGlowAmber = Color(0x0DFFB95F);
+  static const authPlaceholder = Color(0x4DBBCABF);
+
   // Surfaces — light mode (main app)
   static const background = Color(0xFFF8FAFC);
   static const surface = Color(0xFFFFFFFF);
@@ -39,8 +58,8 @@ class AppColors {
   static const borderOnDark = Color(0x1AFFFFFF); // white10
 
   // Auth glass card
-  static const authCardFill = Color(0x0DFFFFFF); // white @ 5%
-  static const authCardBorder = Color(0x1AFFFFFF); // white @ 10%
+  static const authCardFill = authCardSurface;
+  static const authCardBorder = Color(0x0DFFFFFF); // white @ 5%
 
   // Status
   static const success = Color(0xFF22C55E);
@@ -57,7 +76,7 @@ class AppColors {
   static const authGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [brandNavy, brandNavyLight],
+    colors: [authBackground, authBackground],
   );
 
   /// Home / More profile card gradient.

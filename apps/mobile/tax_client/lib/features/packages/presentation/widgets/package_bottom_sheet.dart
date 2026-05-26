@@ -1,32 +1,52 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tax_client/features/packages/data/models/package_model.dart';
-import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
 import 'package:flutter_html/flutter_html.dart';
-import '../../../../core/common/widgets/custom_card.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tax_client/core/common/widgets/primary_button.dart';
+import 'package:tax_client/core/config/theme/app_colors.dart';
+import 'package:tax_client/core/config/theme/app_spacing.dart';
+import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
 
 Future<PackageModel?> showPackageBottomSheet(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  final result = await showModalBottomSheet<PackageModel>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) => const PackageBottomSheet(),
+  final result = await Navigator.of(context).push<PackageModel>(
+    MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (context) => const PackageSelectionScreen(),
+    ),
   );
+
+  if (result != null) {
+    ref.read(selectedPackageProvider.notifier).state = result;
+  }
+
   return result;
 }
 
-class PackageBottomSheet extends ConsumerStatefulWidget {
-  const PackageBottomSheet({super.key});
+class PackageSelectionScreen extends ConsumerStatefulWidget {
+  const PackageSelectionScreen({super.key});
 
   @override
-  ConsumerState<PackageBottomSheet> createState() => _PackageBottomSheetState();
+  ConsumerState<PackageSelectionScreen> createState() =>
+      _PackageSelectionScreenState();
 }
 
-class _PackageBottomSheetState extends ConsumerState<PackageBottomSheet> {
+class _PackageSelectionScreenState
+    extends ConsumerState<PackageSelectionScreen> {
   int? _selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final packagesState = ref.read(packagesProvider);
+      if (!packagesState.hasValue && !packagesState.isLoading) {
+        ref.read(packagesProvider.notifier).getPackages();
+      }
+    });
+  }
 
   IconData _getIconFromString(String iconName) {
     switch (iconName) {
@@ -52,82 +72,693 @@ class _PackageBottomSheetState extends ConsumerState<PackageBottomSheet> {
   Color _getColorFromString(String colorName) {
     switch (colorName.toLowerCase()) {
       case 'blue':
-        return Colors.blue;
+        return AppColors.primary;
       case 'green':
-        return Colors.green;
+        return AppColors.authMint;
       case 'orange':
-        return Colors.orange;
+        return AppColors.authAmber;
       case 'purple':
-        return Colors.purple;
+        return const Color(0xFF9B8AFB);
       case 'teal':
-        return Colors.teal;
+        return const Color(0xFF4FD1C5);
       case 'indigo':
-        return Colors.indigo;
+        return const Color(0xFF7C8BFF);
       case 'cyan':
-        return Colors.cyan;
+        return const Color(0xFF56CCF2);
       default:
-        return Colors.blue;
+        return AppColors.authMint;
     }
+  }
+
+  PackageModel? _resolveSelectedPackage(List<PackageModel> packages) {
+    if (_selectedIndex != null &&
+        _selectedIndex! >= 0 &&
+        _selectedIndex! < packages.length) {
+      return packages[_selectedIndex!];
+    }
+
+    final existingSelection = ref.read(selectedPackageProvider);
+    if (existingSelection == null) {
+      return null;
+    }
+
+    final matchIndex =
+        packages.indexWhere((package) => package.id == existingSelection.id);
+    if (matchIndex == -1) {
+      return null;
+    }
+
+    return packages[matchIndex];
+  }
+
+  String _packageDescriptionHtml(String description) {
+    if (description.contains(RegExp(r'<[^>]+>'))) {
+      return description;
+    }
+
+    final paragraphs = description
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .map((line) => '<p>$line</p>')
+        .join();
+
+    return paragraphs.isEmpty ? '<p>$description</p>' : paragraphs;
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final packagesAsync = ref.watch(packagesProvider);
 
-    return SafeArea(
-      bottom: true,
-      top: false,
-      child: Container(
-        height: MediaQuery.of(context).size.height * 0.85,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
+    return Scaffold(
+      backgroundColor: AppColors.authBackground,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.authBackground, Color(0xFF11182A)],
           ),
         ),
-        child: Column(
-          children: [
-            // Drag handle
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              _PackageSelectionHeader(
+                onClose: () => Navigator.of(context).maybePop(),
               ),
+              Expanded(
+                child: packagesAsync.when(
+                  data: (packages) {
+                    final selectedPackage = _resolveSelectedPackage(packages);
+
+                    return Column(
+                      children: [
+                        Expanded(
+                          child: CustomScrollView(
+                            slivers: [
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.lg,
+                                  AppSpacing.sm,
+                                  AppSpacing.lg,
+                                  0,
+                                ),
+                                sliver: SliverToBoxAdapter(
+                                  child: _PackageIntroCard(
+                                    packageCount: packages.length,
+                                  ),
+                                ),
+                              ),
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.lg,
+                                  AppSpacing.lg,
+                                  AppSpacing.lg,
+                                  0,
+                                ),
+                                sliver: SliverList.separated(
+                                  itemCount: packages.length,
+                                  itemBuilder: (context, index) {
+                                    final package = packages[index];
+                                    final selectedId = selectedPackage?.id;
+                                    final isSelected = selectedId == package.id;
+
+                                    return _PackagePlanCard(
+                                      package: package,
+                                      accent: _getColorFromString(package.color),
+                                      icon: _getIconFromString(package.icon),
+                                      isSelected: isSelected,
+                                      descriptionHtml: _packageDescriptionHtml(
+                                        package.description,
+                                      ),
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedIndex = index;
+                                        });
+                                      },
+                                    );
+                                  },
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(height: AppSpacing.md),
+                                ),
+                              ),
+                              const SliverPadding(
+                                padding: EdgeInsets.fromLTRB(
+                                  AppSpacing.lg,
+                                  AppSpacing.lg,
+                                  AppSpacing.lg,
+                                  AppSpacing.xxxl,
+                                ),
+                                sliver: SliverToBoxAdapter(
+                                  child: _PricingNoteCard(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _PackageSelectionFooter(
+                          selectedPackage: selectedPackage,
+                          onContinue: selectedPackage == null
+                              ? null
+                              : () => Navigator.of(context).pop(selectedPackage),
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const _PackageSelectionLoadingState(),
+                  error: (error, stackTrace) => _PackageSelectionErrorState(
+                    message: error.toString(),
+                    onRetry: () =>
+                        ref.read(packagesProvider.notifier).getPackages(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PackageSelectionHeader extends StatelessWidget {
+  final VoidCallback onClose;
+
+  const _PackageSelectionHeader({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: onClose,
+            icon: const Icon(Icons.close_rounded),
+            style: IconButton.styleFrom(
+              backgroundColor: AppColors.surfaceVariantDark,
+              foregroundColor: AppColors.authHeading,
             ),
-            
-            Expanded(
-              child: packagesAsync.when(
-                data: (packages) => _buildPackagesList(packages, theme, isDark),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) => Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Package Selection',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: AppColors.authHeading,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Choose the plan that fits your filing needs.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.authMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PackageIntroCard extends StatelessWidget {
+  final int packageCount;
+
+  const _PackageIntroCard({required this.packageCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.authCardSurface,
+        borderRadius: BorderRadius.circular(AppSpacing.radius2xl),
+        border: Border.all(color: AppColors.authCardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Pick the right package for your return',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: AppColors.authHeading,
+              fontWeight: FontWeight.w700,
+              height: 1.15,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Compare features, review pricing, and continue once you are comfortable with the plan.',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: AppColors.authMuted,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _InfoChip(
+                icon: Icons.layers_outlined,
+                label: '$packageCount plans available',
+              ),
+              const _InfoChip(
+                icon: Icons.lock_outline_rounded,
+                label: 'Secure checkout later',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PackagePlanCard extends StatelessWidget {
+  final PackageModel package;
+  final Color accent;
+  final IconData icon;
+  final bool isSelected;
+  final String descriptionHtml;
+  final VoidCallback onTap;
+
+  const _PackagePlanCard({
+    required this.package,
+    required this.accent,
+    required this.icon,
+    required this.isSelected,
+    required this.descriptionHtml,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.radius2xl),
+        child: Ink(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSpacing.radius2xl),
+            border: Border.all(
+              color: isSelected
+                  ? accent.withValues(alpha: 0.95)
+                  : AppColors.borderOnDark,
+              width: isSelected ? 1.5 : 1,
+            ),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isSelected
+                  ? [
+                      accent.withValues(alpha: 0.18),
+                      AppColors.authCardSurface,
+                    ]
+                  : [
+                      const Color(0x14131B2E),
+                      const Color(0x24131B2E),
+                    ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isSelected
+                    ? accent.withValues(alpha: 0.18)
+                    : Colors.black.withValues(alpha: 0.12),
+                blurRadius: isSelected ? 28 : 18,
+                offset: const Offset(0, 14),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                    ),
+                    child: Icon(icon, color: accent, size: 26),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          package.name,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: AppColors.authHeading,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (package.turnover != null &&
+                            package.turnover!.trim().isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          _TurnoverChip(
+                            label: 'Turnover: ${package.turnover}',
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 48,
-                        color: theme.colorScheme.error,
-                      ),
-                      const SizedBox(height: 16),
                       Text(
-                        'Failed to load packages',
-                        style: theme.textTheme.titleMedium,
+                        'From',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.authMuted,
+                        ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 2),
                       Text(
-                        error.toString(),
-                        style: theme.textTheme.bodySmall,
-                        textAlign: TextAlign.center,
+                        package.price,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: accent,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ],
                   ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Html(
+                data: descriptionHtml,
+                style: {
+                  'html': Style(
+                    margin: Margins.zero,
+                    padding: HtmlPaddings.zero,
+                  ),
+                  'body': Style(
+                    margin: Margins.zero,
+                    padding: HtmlPaddings.zero,
+                    color: AppColors.authMuted,
+                    fontSize:
+                        FontSize(theme.textTheme.bodyMedium?.fontSize ?? 14),
+                    lineHeight: const LineHeight(1.5),
+                  ),
+                  'p': Style(
+                    margin: Margins.only(bottom: AppSpacing.sm),
+                  ),
+                  'ul': Style(
+                    margin: Margins.zero,
+                    padding: HtmlPaddings.only(left: AppSpacing.md),
+                  ),
+                  'li': Style(
+                    color: AppColors.authMuted,
+                    margin: Margins.only(bottom: AppSpacing.xs),
+                  ),
+                  'strong': Style(
+                    color: AppColors.authHeading,
+                    fontWeight: FontWeight.w700,
+                  ),
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? accent.withValues(alpha: 0.16)
+                          : AppColors.surfaceVariantDark.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                    ),
+                    child: Text(
+                      isSelected ? 'Selected plan' : 'Tap to select',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: isSelected ? accent : AppColors.authMuted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.arrow_forward_rounded,
+                    color: isSelected ? accent : AppColors.authMutedSoft,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PackageSelectionFooter extends StatelessWidget {
+  final PackageModel? selectedPackage;
+  final VoidCallback? onContinue;
+
+  const _PackageSelectionFooter({
+    required this.selectedPackage,
+    required this.onContinue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xF21A2236),
+        border: Border(
+          top: BorderSide(color: AppColors.borderOnDark),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          AppSpacing.md,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              selectedPackage?.name ?? 'Select a package to continue',
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: AppColors.authHeading,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              selectedPackage == null
+                  ? 'You can compare plans first and continue once one is selected.'
+                  : 'Starting at ${selectedPackage!.price}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.authMuted,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            PrimaryButton(
+              text: selectedPackage == null ? 'SELECT A PACKAGE' : 'CONTINUE',
+              onPressed: onContinue,
+              minHeight: 56,
+              borderRadius: AppSpacing.radiusPill,
+              foregroundColor: AppColors.authButtonText,
+              textStyle: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
+              ),
+              gradient: const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [AppColors.authMint, AppColors.authMintDark],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.authMint.withValues(alpha: 0.22),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
                 ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PricingNoteCard extends StatelessWidget {
+  const _PricingNoteCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.authMint.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(
+          color: AppColors.authMint.withValues(alpha: 0.24),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: AppColors.authMint,
+            size: 20,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'All listed prices are starting prices and may vary depending on service complexity, additional requirements, or add-on requests.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.authMuted,
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PackageSelectionLoadingState extends StatelessWidget {
+  const _PackageSelectionLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: AppColors.authMint),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Loading available packages...',
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: AppColors.authHeading,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Fetching the latest plans for your filing journey.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.authMuted,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PackageSelectionErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _PackageSelectionErrorState({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: AppColors.authAmber,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Unable to load packages',
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: AppColors.authHeading,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.authMuted,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            PrimaryButton(
+              text: 'TRY AGAIN',
+              onPressed: onRetry,
+              borderRadius: AppSpacing.radiusPill,
+              foregroundColor: AppColors.authButtonText,
+              textStyle: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+              gradient: const LinearGradient(
+                colors: [AppColors.authMint, AppColors.authMintDark],
               ),
             ),
           ],
@@ -135,214 +766,72 @@ class _PackageBottomSheetState extends ConsumerState<PackageBottomSheet> {
       ),
     );
   }
+}
 
-  Widget _buildPackagesList(List<PackageModel> packages, ThemeData theme, bool isDark) {
-    return CustomScrollView(
-      slivers: [
-        // Header
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              children: [
-                Text(
-                  'Our Pricing Plans',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Choose the perfect plan for your needs',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                ),
-              ],
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariantDark.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: AppColors.authMint, size: 16),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            label,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: AppColors.authHeading,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TurnoverChip extends StatelessWidget {
+  final String label;
+
+  const _TurnoverChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.authAmber.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: AppColors.authAmber,
+          fontWeight: FontWeight.w700,
         ),
-        
-        const SliverToBoxAdapter(
-          child: Divider(height: 1),
-        ),
-        
-        // Packages List
-        SliverPadding(
-          padding: const EdgeInsets.all(16),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final package = packages[index];
-                final isSelected = _selectedIndex == index;
-                final color = _getColorFromString(package.color);
-                final icon = _getIconFromString(package.icon);
-                
-                return CustomCard(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  backgroundColor: isSelected
-                        ? color.withOpacity(isDark ? 0.2 : 0.1)
-                        : theme.colorScheme.surface,
-                  border: Border.all(
-                    color: isSelected
-                        ? color
-                        : theme.colorScheme.outlineVariant,
-                    width: isSelected ? 2 : 1,
-                  ),
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = index;
-                    });
-                    // Close bottom sheet and return selected package
-                    Navigator.of(context).pop(package);
-                  },
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Icon
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          icon,
-                          color: color,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      
-                      // Content
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              package.name,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Html(
-                              data: package.description.contains(RegExp(r'<[^>]+>')) 
-                                  ? package.description 
-                                  : package.description.replaceAll('\n', '<br/>'),
-                              style: {
-                                "body": Style(
-                                  margin: Margins.zero,
-                                  padding: HtmlPaddings.zero,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.7),
-                                  fontSize: FontSize(theme.textTheme.bodySmall?.fontSize ?? 12.0),
-                                  fontWeight: theme.textTheme.bodySmall?.fontWeight,
-                                ),
-                              },
-                            ),
-                            if (package.turnover != null && package.turnover!.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.secondaryContainer,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'Turnover: ${package.turnover}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSecondaryContainer,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      
-                      // Price
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            package.price,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: color,
-                            ),
-                          ),
-                          if (isSelected)
-                            Container(
-                              margin: const EdgeInsets.only(top: 4),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: color,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'Selected',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-              childCount: packages.length,
-            ),
-          ),
-        ),
-        
-        // Note
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.green.withOpacity(0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    color: Colors.green,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'NOTE: All prices listed are starting prices and may increase based on additional services, complexity, or extended requirements.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.green.shade700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        
-        const SliverToBoxAdapter(child: SizedBox(height: 32)),
-      ],
+      ),
     );
   }
 }
