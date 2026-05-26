@@ -20,6 +20,7 @@ import 'package:tax_client/features/packages/presentation/providers/package_prov
 import 'package:tax_client/features/packages/presentation/widgets/package_bottom_sheet.dart';
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_provider.dart';
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_state.dart';
+import 'package:tax_client/features/status/data/models/itr_detailed_status_model.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -117,6 +118,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _openOrders(BuildContext context) {
     context.go('/orders');
+  }
+
+  void _openTaxCalculator(BuildContext context) {
+    context.push('/tax_calculator');
   }
 
   void _openStatus(BuildContext context, HomeDashboardSnapshot snapshot) {
@@ -322,6 +327,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       onContinueFiling: () =>
                           _handleFileItr(context, JourneyType.ITR),
                       onTrackStatus: () => _openStatus(context, snapshot),
+                      onOpenTaxCalculator: () => _openTaxCalculator(context),
                       onOpenDocuments: () =>
                           _openDocuments(context, snapshot, packagesAsync),
                       onOpenOrders: () => _openOrders(context),
@@ -479,6 +485,7 @@ class _ActiveDashboardView extends StatelessWidget {
   final PackageModel? selectedPackage;
   final VoidCallback onContinueFiling;
   final VoidCallback onTrackStatus;
+  final VoidCallback onOpenTaxCalculator;
   final VoidCallback onOpenDocuments;
   final VoidCallback onOpenOrders;
   final VoidCallback onContactSupport;
@@ -488,6 +495,7 @@ class _ActiveDashboardView extends StatelessWidget {
     required this.selectedPackage,
     required this.onContinueFiling,
     required this.onTrackStatus,
+    required this.onOpenTaxCalculator,
     required this.onOpenDocuments,
     required this.onOpenOrders,
     required this.onContactSupport,
@@ -522,16 +530,8 @@ class _ActiveDashboardView extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.lg),
         _WorkspaceOverviewCard(
-          progress: _workspaceProgress(snapshot, selectedPackage),
-          progressLabel: _progressSummary(snapshot, selectedPackage),
-          statusDescription: _statusDescription(snapshot, selectedPackage),
-          packageName: selectedPackage?.name ??
-              snapshot.activeDraft?.packageName ??
-              snapshot.activeOrder?.packageName,
-          orderId: snapshot.activeOrder?.orderId,
-          assignmentName: snapshot.activeStatus?.assignmentStatus?.professionalName,
-          paymentStatus:
-              snapshot.activeDraft?.paymentStatus ?? snapshot.activeOrder?.status,
+          snapshot: snapshot,
+          selectedPackage: selectedPackage,
         ),
         const SizedBox(height: AppSpacing.xxl),
         _SectionHeader(
@@ -582,11 +582,19 @@ class _ActiveDashboardView extends StatelessWidget {
           runSpacing: AppSpacing.md,
           children: [
             _QuickToolCard(
-              icon: Icons.timeline_rounded,
-              title: 'Track Status',
-              description: 'See your current filing stage and expert updates.',
+              icon: Icons.calculate_outlined,
+              title: 'Tax Calculator',
+              description: 'Estimate tax with the latest slab logic and regime comparison.',
+              accent: AppColors.authAmber,
+              onTap: onOpenTaxCalculator,
+            ),
+            _QuickToolCard(
+              icon: Icons.description_outlined,
+              title: 'File ITR',
+              description:
+                  'Start a filing, reopen an ITR record, and continue with your saved flow.',
               accent: AppColors.authMint,
-              onTap: onTrackStatus,
+              onTap: onContinueFiling,
             ),
             _QuickToolCard(
               icon: Icons.folder_open_outlined,
@@ -902,27 +910,42 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _WorkspaceOverviewCard extends StatelessWidget {
-  final double progress;
-  final String progressLabel;
-  final String statusDescription;
-  final String? packageName;
-  final String? orderId;
-  final String? assignmentName;
-  final String? paymentStatus;
+  final HomeDashboardSnapshot snapshot;
+  final PackageModel? selectedPackage;
 
   const _WorkspaceOverviewCard({
-    required this.progress,
-    required this.progressLabel,
-    required this.statusDescription,
-    this.packageName,
-    this.orderId,
-    this.assignmentName,
-    this.paymentStatus,
+    required this.snapshot,
+    required this.selectedPackage,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final statusInfo = snapshot.activeStatus?.itrStatus;
+    final steps = statusInfo?.steps ?? const <ItrStatusStepModel>[];
+    final currentStepNumber =
+        (statusInfo?.currentStep ?? 1).clamp(1, steps.isEmpty ? 1 : steps.length)
+            .toInt();
+    final currentIndex = steps.isEmpty ? 0 : currentStepNumber - 1;
+    final activeStep = steps.isEmpty ? null : steps[currentIndex];
+    final progress = _workspaceProgress(snapshot, selectedPackage);
+    final progressPercent = (progress * 100).round();
+    final stageTitle = activeStep?.title?.trim().isNotEmpty == true
+        ? activeStep!.title!
+        : _progressSummary(snapshot, selectedPackage);
+    final stageDetail = activeStep?.notes?.trim().isNotEmpty == true
+        ? activeStep!.notes!
+        : _statusDescription(snapshot, selectedPackage);
+    final packageName = selectedPackage?.name ??
+        snapshot.activeDraft?.packageName ??
+        snapshot.activeOrder?.packageName ??
+        'Not selected';
+    final paymentStatus =
+        snapshot.activeDraft?.paymentStatus ?? snapshot.activeOrder?.status;
+    final assignmentName =
+        snapshot.activeStatus?.assignmentStatus?.professionalName ?? 'Assigning soon';
+    final orderId =
+        snapshot.activeOrder?.orderId ?? 'Will appear after payment';
 
     return Container(
       width: double.infinity,
@@ -935,58 +958,142 @@ class _WorkspaceOverviewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            progressLabel,
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: AppColors.authHeading,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Current Stage',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.authMuted,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      stageTitle,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: AppColors.authHeading,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.authMint.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                ),
+                child: Text(
+                  '$progressPercent% Done',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: AppColors.authMint,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            statusDescription,
+            stageDetail,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: AppColors.authMuted,
               height: 1.5,
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _progressSummary(snapshot, selectedPackage),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: AppColors.authHeading,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                snapshot.activeStatus?.itrStatus?.overallStatus != null
+                    ? _toCaps(snapshot.activeStatus!.itrStatus!.overallStatus!)
+                    : 'In Progress',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: AppColors.authMint,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 6,
+              minHeight: 8,
               backgroundColor: AppColors.surfaceVariantDark,
               valueColor:
                   const AlwaysStoppedAnimation<Color>(AppColors.authMint),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
+          if (steps.isNotEmpty) ...[
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: List.generate(steps.length, (index) {
+                final step = steps[index];
+                final isCurrent = index == currentIndex;
+                final isCompleted = step.isCompleted ?? false;
+                return _TrackingStepPill(
+                  label: step.title?.trim().isNotEmpty == true
+                      ? step.title!
+                      : _toCaps(step.step ?? 'Stage'),
+                  isCurrent: isCurrent,
+                  isCompleted: isCompleted,
+                  hasConcern: step.hasConcern ?? false,
+                );
+              }),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
           Wrap(
             spacing: AppSpacing.md,
             runSpacing: AppSpacing.md,
             children: [
-              _WorkspaceMetricChip(
+              _TrackingHighlightCard(
                 label: 'Package',
-                value: packageName ?? 'Not selected',
+                value: packageName,
                 accent: AppColors.authMint,
+                icon: Icons.inventory_2_outlined,
               ),
-              _WorkspaceMetricChip(
+              _TrackingHighlightCard(
                 label: 'Payment',
-                value: paymentStatus == null || paymentStatus!.trim().isEmpty
+                value: paymentStatus == null || paymentStatus.trim().isEmpty
                     ? 'Pending'
-                    : _toCaps(paymentStatus!),
+                    : _toCaps(paymentStatus),
                 accent: AppColors.authAmber,
+                icon: Icons.payments_outlined,
               ),
-              _WorkspaceMetricChip(
+              _TrackingHighlightCard(
                 label: 'Expert',
-                value: assignmentName ?? 'Assigning soon',
+                value: assignmentName,
                 accent: AppColors.authHeading,
+                icon: Icons.support_agent_rounded,
               ),
-              _WorkspaceMetricChip(
+              _TrackingHighlightCard(
                 label: 'Order ID',
-                value: orderId ?? 'Will appear after payment',
+                value: orderId,
                 accent: AppColors.authMintDark,
+                icon: Icons.receipt_long_outlined,
               ),
             ],
           ),
@@ -996,15 +1103,84 @@ class _WorkspaceOverviewCard extends StatelessWidget {
   }
 }
 
-class _WorkspaceMetricChip extends StatelessWidget {
+class _TrackingStepPill extends StatelessWidget {
+  final String label;
+  final bool isCurrent;
+  final bool isCompleted;
+  final bool hasConcern;
+
+  const _TrackingStepPill({
+    required this.label,
+    required this.isCurrent,
+    required this.isCompleted,
+    required this.hasConcern,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = hasConcern
+        ? AppColors.authAmber
+        : isCurrent
+            ? AppColors.authMint
+            : isCompleted
+                ? AppColors.authHeading
+                : AppColors.authMutedSoft;
+
+    return Container(
+      constraints: const BoxConstraints(minWidth: 110),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: isCurrent ? 0.18 : 0.10),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+        border: Border.all(
+          color: accent.withValues(alpha: isCurrent ? 0.5 : 0.22),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isCompleted
+                ? Icons.check_circle_rounded
+                : isCurrent
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_unchecked_rounded,
+            size: 16,
+            color: accent,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: isCurrent ? AppColors.authHeading : accent,
+                fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrackingHighlightCard extends StatelessWidget {
   final String label;
   final String value;
   final Color accent;
+  final IconData icon;
 
-  const _WorkspaceMetricChip({
+  const _TrackingHighlightCard({
     required this.label,
     required this.value,
     required this.accent,
+    required this.icon,
   });
 
   @override
@@ -1017,22 +1193,42 @@ class _WorkspaceMetricChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: accent.withValues(alpha: 0.12)),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.authMuted,
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             ),
+            child: Icon(icon, color: accent, size: 18),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: AppColors.authHeading,
-              fontWeight: FontWeight.w700,
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.authMuted,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: AppColors.authHeading,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

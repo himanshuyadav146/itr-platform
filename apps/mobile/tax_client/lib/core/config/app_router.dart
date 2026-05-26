@@ -14,6 +14,7 @@ import 'package:tax_client/features/personal_info/presentation/screens/personal_
 import 'package:tax_client/features/personal_info/presentation/screens/itr_list_screen.dart';
 import 'package:tax_client/features/personal_info/data/models/itr_personal_detail_model.dart';
 import 'package:tax_client/features/payment/presentation/screens/payment_screen.dart';
+import 'package:tax_client/features/tax_calculator/presentation/screens/tax_calculator_screen.dart';
 
 import '../../features/document_upload/presentation/screens/upload_documents_screen.dart';
 import 'package:tax_client/features/status/presentation/screens/status_screen.dart';
@@ -132,6 +133,12 @@ class AppRouter {
             }
             
             return StatusScreen(itrData: itrData, orderId: orderId);
+          },
+        ),
+        GoRoute(
+          path: '/tax_calculator',
+          builder: (BuildContext context, GoRouterState state) {
+            return const TaxCalculatorScreen();
           },
         ),
         GoRoute(

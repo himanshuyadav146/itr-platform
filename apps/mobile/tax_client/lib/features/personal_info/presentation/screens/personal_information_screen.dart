@@ -13,10 +13,9 @@ import 'package:tax_client/features/personal_info/presentation/providers/persona
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_state.dart';
 import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
 
-
 class PersonalInformationScreen extends ConsumerStatefulWidget {
   final ItrPersonalDetailModel? itrData;
-  
+
   const PersonalInformationScreen({super.key, this.itrData});
 
   @override
@@ -62,19 +61,22 @@ class _PersonalInformationScreenState
       _aadharController.text = itrData.aadharCardNumber;
       _addressController.text = itrData.address;
       // Only set dropdown values if they exist in options; otherwise keep defaults
-      _selectedGender = AppConstants.genderOptions.contains(itrData.gender.trim())
+      _selectedGender =
+          AppConstants.genderOptions.contains(itrData.gender.trim())
           ? itrData.gender.trim()
           : AppConstants.defaultGender;
       _selectedFinancialYear =
-          AppConstants.financialYearOptions.contains(itrData.financialYear.trim())
-              ? itrData.financialYear.trim()
-              : AppConstants.defaultFinancialYear;
-      _selectedCountry = AppConstants.countryOptions.contains(itrData.country.trim())
+          AppConstants.financialYearOptions.contains(
+            itrData.financialYear.trim(),
+          )
+          ? itrData.financialYear.trim()
+          : AppConstants.defaultFinancialYear;
+      _selectedCountry =
+          AppConstants.countryOptions.contains(itrData.country.trim())
           ? itrData.country.trim()
           : AppConstants.defaultCountry;
     });
   }
-
 
   @override
   void dispose() {
@@ -93,11 +95,13 @@ class _PersonalInformationScreenState
     if (_formKey.currentState?.validate() ?? false) {
       // Get selected package if available
       final selectedPackage = ref.read(selectedPackageProvider);
-      
+
       // Get selected journey type
       final journeyType = ref.read(journeyTypeProvider);
-      
-      ref.read(personalInfoViewModelProvider.notifier).addPersonalDetails(
+
+      ref
+          .read(personalInfoViewModelProvider.notifier)
+          .addPersonalDetails(
             panNumber: _panController.text.trim(),
             firstName: _firstNameController.text.trim(),
             middleName: _middleNameController.text.trim(),
@@ -110,7 +114,9 @@ class _PersonalInformationScreenState
             address: _addressController.text.trim(),
             country: _selectedCountry,
             journeyType: journeyType.apiValue, // Use the apiValue getter
-            packageId: selectedPackage?.id != null ? int.tryParse(selectedPackage!.id) : null,
+            packageId: selectedPackage?.id != null
+                ? int.tryParse(selectedPackage!.id)
+                : null,
           );
     }
   }
@@ -120,32 +126,37 @@ class _PersonalInformationScreenState
     final textTheme = Theme.of(context).textTheme;
     // Optimize: Use select to watch only loading state
     final isLoading = ref.watch(
-      personalInfoViewModelProvider.select((state) => state is PersonalInfoLoading),
+      personalInfoViewModelProvider.select(
+        (state) => state is PersonalInfoLoading,
+      ),
     );
 
     // Listen to state changes for navigation and feedback
-    ref.listen<PersonalInfoState>(
-      personalInfoViewModelProvider,
-      (previous, next) {
-        if (next is PersonalInfoSuccess) {
-          ErrorHandler.showSuccess(context, next.message);
-          // Navigate to document upload on success
-          GoRouter.of(context).push('/document_upload');
-        } else if (next is PersonalInfoError) {
-          ErrorHandler.showError(context, next.message);
-        }
-      },
-    );
+    ref.listen<PersonalInfoState>(personalInfoViewModelProvider, (
+      previous,
+      next,
+    ) {
+      if (next is PersonalInfoSuccess) {
+        ErrorHandler.showSuccess(context, next.message);
+        // Navigate to document upload on success
+        GoRouter.of(context).push('/document_upload');
+      } else if (next is PersonalInfoError) {
+        ErrorHandler.showError(context, next.message);
+      }
+    });
 
     return CoreScaffold(
       title: AppStrings.personalInfo,
       // Sticky bottom Save button
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-        child: PrimaryButton(
-          text: AppStrings.save,
-          onPressed: isLoading ? () {} : _handleSave,
-          isLoading: isLoading,
+        child: SizedBox(
+          height: 56,
+          child: PrimaryButton(
+            text: AppStrings.save,
+            onPressed: isLoading ? () {} : _handleSave,
+            isLoading: isLoading,
+          ),
         ),
       ),
       useScrollView: true,
@@ -257,10 +268,7 @@ class _PersonalInformationScreenState
                 ),
               ),
               items: AppConstants.genderOptions.map((gender) {
-                return DropdownMenuItem(
-                  value: gender,
-                  child: Text(gender),
-                );
+                return DropdownMenuItem(value: gender, child: Text(gender));
               }).toList(),
               onChanged: isLoading
                   ? null
@@ -274,7 +282,10 @@ class _PersonalInformationScreenState
 
             // Financial Year Dropdown (ensure value is always in the options list)
             DropdownButtonFormField<String>(
-              value: AppConstants.financialYearOptions.contains(_selectedFinancialYear)
+              value:
+                  AppConstants.financialYearOptions.contains(
+                    _selectedFinancialYear,
+                  )
                   ? _selectedFinancialYear
                   : AppConstants.defaultFinancialYear,
               decoration: InputDecoration(
@@ -285,10 +296,7 @@ class _PersonalInformationScreenState
                 ),
               ),
               items: AppConstants.financialYearOptions.map((year) {
-                return DropdownMenuItem(
-                  value: year,
-                  child: Text(year),
-                );
+                return DropdownMenuItem(value: year, child: Text(year));
               }).toList(),
               onChanged: isLoading
                   ? null
@@ -313,10 +321,7 @@ class _PersonalInformationScreenState
                 ),
               ),
               items: AppConstants.countryOptions.map((country) {
-                return DropdownMenuItem(
-                  value: country,
-                  child: Text(country),
-                );
+                return DropdownMenuItem(value: country, child: Text(country));
               }).toList(),
               onChanged: isLoading
                   ? null
