@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tax_client/core/network/token_storage.dart';
+import 'package:tax_client/features/home/domain/dashboard_mode.dart';
 import 'package:tax_client/features/orders/data/models/order_model.dart';
 import 'package:tax_client/features/orders/domain/usecases/get_orders.dart';
 import 'package:tax_client/features/personal_info/data/models/get_itr_by_user_data.dart';
@@ -25,49 +26,189 @@ final homeDashboardSnapshotProvider =
   final orders = await _loadOrders(getOrders);
   final filings = await _loadItrs(getItrByUser, userId);
 
-  final activeDraft = _pickActiveDraft(filings);
-  final activeOrder = _pickActiveOrder(orders, activeDraft);
-  final status = await _loadStatus(getDetailedStatus, activeOrder, activeDraft);
+  final focus = _resolveDashboardFocus(filings, orders);
+
+  ItrDetailedStatusModel? status;
+  if (focus.mode == DashboardMode.postPayment && focus.focusItr != null) {
+    status = await _loadStatus(
+      getDetailedStatus,
+      focus.focusOrder,
+      focus.focusItr!,
+    );
+  }
 
   return HomeDashboardSnapshot(
     userId: userId,
     orders: orders,
     filings: filings,
-    activeDraft: activeDraft,
-    activeOrder: activeOrder,
+    mode: focus.mode,
+    focusItr: focus.focusItr,
+    focusOrder: focus.focusOrder,
     activeStatus: status,
   );
 });
+
+class _DashboardFocus {
+  final DashboardMode mode;
+  final ItrPersonalDetailModel? focusItr;
+  final OrderModel? focusOrder;
+
+  const _DashboardFocus({
+    required this.mode,
+    this.focusItr,
+    this.focusOrder,
+  });
+}
 
 class HomeDashboardSnapshot {
   final String? userId;
   final List<OrderModel> orders;
   final List<ItrPersonalDetailModel> filings;
-  final ItrPersonalDetailModel? activeDraft;
-  final OrderModel? activeOrder;
+  final DashboardMode mode;
+  final ItrPersonalDetailModel? focusItr;
+  final OrderModel? focusOrder;
   final ItrDetailedStatusModel? activeStatus;
 
   const HomeDashboardSnapshot({
     this.userId,
     this.orders = const [],
     this.filings = const [],
-    this.activeDraft,
-    this.activeOrder,
+    this.mode = DashboardMode.none,
+    this.focusItr,
+    this.focusOrder,
     this.activeStatus,
   });
 
+  /// Backward-compatible aliases used across the home screen helpers.
+  ItrPersonalDetailModel? get activeDraft => focusItr;
+
+  OrderModel? get activeOrder => focusOrder;
+
   bool get hasWorkspace =>
-      activeDraft != null || activeOrder != null || filings.isNotEmpty;
+      mode != DashboardMode.none ||
+      focusItr != null ||
+      focusOrder != null ||
+      filings.isNotEmpty;
 
-  int get unresolvedConcernsCount {
-    final updates = activeStatus?.statusUpdates ?? const <StatusUpdateModel>[];
-    return updates.where(_isUrgentStatusUpdate).length;
+  bool get showPendingPayment => mode == DashboardMode.prePayment;
+
+  bool get showLiveTracking => mode == DashboardMode.postPayment;
+
+  bool get showCriticalActions =>
+      showLiveTracking && pendingActions.isNotEmpty;
+
+  int get pendingActionsCount => pendingActions.length;
+
+  List<DashboardActionItem> get pendingActions {
+    if (!showLiveTracking || activeStatus == null) {
+      return const [];
+    }
+
+    final expertName =
+        activeStatus!.assignmentStatus?.professionalName?.trim().isNotEmpty ==
+                true
+            ? activeStatus!.assignmentStatus!.professionalName!.trim()
+            : 'Tax Expert';
+
+    final items = <DashboardActionItem>[];
+    final seenMessages = <String>{};
+
+    for (final update in activeStatus!.statusUpdates ?? const []) {
+      if (!_isPendingStatusUpdate(update)) {
+        continue;
+      }
+      final item = DashboardActionItem.fromStatusUpdate(
+        id: update.id,
+        message: update.message,
+        status: update.status,
+        createdAt: update.createdAt,
+        expertName: expertName,
+      );
+      if (seenMessages.add(item.message)) {
+        items.add(item);
+      }
+    }
+
+    for (final step in activeStatus!.itrStatus?.steps ?? const []) {
+      if (step.hasConcern != true) {
+        continue;
+      }
+      final item = DashboardActionItem.fromStepConcern(
+        stepTitle: step.title ?? step.step ?? 'Filing step',
+        concernText: step.concern ?? step.notes,
+        expertName: expertName,
+      );
+      if (seenMessages.add(item.message)) {
+        items.add(item);
+      }
+    }
+
+    return items;
   }
 
-  List<StatusUpdateModel> get urgentUpdates {
-    final updates = activeStatus?.statusUpdates ?? const <StatusUpdateModel>[];
-    return updates.where(_isUrgentStatusUpdate).take(2).toList();
+  /// True when at least one filing has a PAN (filings are sorted newest first).
+  bool get hasDocumentVaultAccess =>
+      filings.any((filing) => filing.panNumber.trim().isNotEmpty);
+
+  /// Filing used for document vault — focus ITR when available, else newest with PAN.
+  ItrPersonalDetailModel? get documentVaultItr {
+    if (focusItr != null && focusItr!.panNumber.trim().isNotEmpty) {
+      return focusItr;
+    }
+    for (final filing in filings) {
+      if (filing.panNumber.trim().isNotEmpty) {
+        return filing;
+      }
+    }
+    return null;
   }
+}
+
+_DashboardFocus _resolveDashboardFocus(
+  List<ItrPersonalDetailModel> filings,
+  List<OrderModel> orders,
+) {
+  if (filings.isEmpty) {
+    return const _DashboardFocus(mode: DashboardMode.none);
+  }
+
+  final newest = filings.first;
+
+  if (_hasPaymentSuccess(newest)) {
+    return _DashboardFocus(
+      mode: DashboardMode.postPayment,
+      focusItr: newest,
+      focusOrder: _findOrderForItr(orders, newest),
+    );
+  }
+
+  // Newest ITR is unpaid — pending payment UI (even if older paid ITRs exist).
+  return _DashboardFocus(
+    mode: DashboardMode.prePayment,
+    focusItr: newest,
+    focusOrder: null,
+  );
+}
+
+OrderModel? _findOrderForItr(
+  List<OrderModel> orders,
+  ItrPersonalDetailModel itr,
+) {
+  final itrId = itr.itrId;
+  if (itrId == null || itrId.isEmpty) {
+    return null;
+  }
+
+  for (final order in orders) {
+    if (order.itrId?.toString() == itrId) {
+      return order;
+    }
+  }
+  return null;
+}
+
+bool _hasPaymentSuccess(ItrPersonalDetailModel filing) {
+  return (filing.paymentStatus ?? '').trim().toLowerCase() == 'success';
 }
 
 Future<List<OrderModel>> _loadOrders(GetOrders getOrders) async {
@@ -77,7 +218,9 @@ Future<List<OrderModel>> _loadOrders(GetOrders getOrders) async {
     (_) => <OrderModel>[],
     (orders) {
       final sorted = [...orders];
-      sorted.sort((a, b) => _compareDates(b.paidAt ?? b.createdAt, a.paidAt ?? a.createdAt));
+      sorted.sort(
+        (a, b) => _compareDates(b.paidAt ?? b.createdAt, a.paidAt ?? a.createdAt),
+      );
       return sorted;
     },
   );
@@ -101,84 +244,28 @@ Future<List<ItrPersonalDetailModel>> _loadItrs(
 
 Future<ItrDetailedStatusModel?> _loadStatus(
   GetDetailedStatus getDetailedStatus,
-  OrderModel? activeOrder,
-  ItrPersonalDetailModel? activeDraft,
+  OrderModel? focusOrder,
+  ItrPersonalDetailModel focusItr,
 ) async {
-  final orderId = activeOrder?.orderId;
-  final itrId = activeDraft?.itrId ?? activeOrder?.itrId?.toString();
-
-  if (orderId == null || orderId.isEmpty || itrId == null || itrId.isEmpty) {
+  final itrId = focusItr.itrId;
+  if (itrId == null || itrId.isEmpty) {
     return null;
   }
 
+  final orderId = focusOrder?.orderId ?? '';
   final result = await getDetailedStatus(orderId, itrId);
   return result.fold((_) => null, (status) => status);
 }
 
-ItrPersonalDetailModel? _pickActiveDraft(List<ItrPersonalDetailModel> filings) {
-  for (final filing in filings) {
-    if (!_isCompletedFiling(filing)) {
-      return filing;
-    }
-  }
-  return null;
-}
-
-OrderModel? _pickActiveOrder(
-  List<OrderModel> orders,
-  ItrPersonalDetailModel? activeDraft,
-) {
-  if (activeDraft?.itrId != null && activeDraft!.itrId!.isNotEmpty) {
-    for (final order in orders) {
-      if (order.itrId?.toString() == activeDraft.itrId) {
-        return order;
-      }
-    }
-  }
-
-  for (final order in orders) {
-    if (!_isFailedOrder(order)) {
-      return order;
-    }
-  }
-
-  return null;
-}
-
-bool _isCompletedFiling(ItrPersonalDetailModel filing) {
-  final paymentStatus = (filing.paymentStatus ?? '').trim().toLowerCase();
-  final itrStatus = (filing.itrStatus ?? '').trim().toLowerCase();
-
-  if (paymentStatus == 'success') {
-    return itrStatus.isEmpty ||
-        itrStatus == 'completed' ||
-        itrStatus == 'filed' ||
-        itrStatus == 'delivered';
-  }
-
-  return false;
-}
-
-bool _isFailedOrder(OrderModel order) {
-  final status = (order.status ?? '').trim().toLowerCase();
-  return status == 'failed' || status == 'cancelled' || status == 'canceled';
-}
-
-bool _isUrgentStatusUpdate(StatusUpdateModel update) {
+bool _isPendingStatusUpdate(StatusUpdateModel update) {
   final status = (update.status ?? '').trim().toLowerCase();
-  final message = (update.message ?? '').trim().toLowerCase();
-
-  if (update.resolvedAt == null && update.message != null && update.message!.trim().isNotEmpty) {
-    return true;
+  if (update.resolvedAt != null && update.resolvedAt!.trim().isNotEmpty) {
+    return false;
   }
-
-  return status.contains('pending') ||
-      status.contains('concern') ||
-      status.contains('missing') ||
-      message.contains('missing') ||
-      message.contains('action') ||
-      message.contains('upload') ||
-      message.contains('required');
+  if (status == 'resolved' || status == 'closed') {
+    return false;
+  }
+  return update.message != null && update.message!.trim().isNotEmpty;
 }
 
 int _compareDates(String? a, String? b) {

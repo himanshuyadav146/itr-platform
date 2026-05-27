@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:tax_client/core/common/widgets/core_scaffold.dart';
+import 'package:tax_client/core/common/widgets/responsive_grid.dart';
 import 'package:tax_client/core/common/widgets/core_text_field.dart';
 import 'package:tax_client/core/common/widgets/primary_button.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
@@ -46,7 +47,9 @@ class _TaxCalculatorScreenState extends ConsumerState<TaxCalculatorScreen> {
     return CoreScaffold(
       title: 'Income Tax Calculator',
       showBackButton: true,
-      centered: false,
+      centered: true,
+      useResponsiveMaxWidth: true,
+      maxContentWidth: 560,
       useScrollView: true,
       backgroundColor: AppColors.authBackground,
       body: Column(
@@ -199,9 +202,12 @@ class _TaxCalculatorScreenState extends ConsumerState<TaxCalculatorScreen> {
             const SizedBox(height: AppSpacing.lg),
             _ResultSummaryCard(result: result),
             const SizedBox(height: AppSpacing.lg),
-            Wrap(
+            ResponsiveWrapGrid(
               spacing: AppSpacing.md,
               runSpacing: AppSpacing.md,
+              phoneColumns: 2,
+              tabletColumns: 2,
+              wideColumns: 4,
               children: [
                 _BreakdownTile(
                   label: 'Taxable Income',
@@ -510,7 +516,6 @@ class _BreakdownTile extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      width: 160,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.08),

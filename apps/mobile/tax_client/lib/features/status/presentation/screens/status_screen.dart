@@ -112,8 +112,10 @@ class _StatusScreenState extends ConsumerState<StatusScreen>
 
     return CoreScaffold(
       includeAppBar: false,
-      centered: false,
       useScrollView: true,
+      centered: true,
+      useResponsiveMaxWidth: true,
+      maxContentWidth: 560,
       backgroundColor: AppColors.authBackground,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,

@@ -134,7 +134,9 @@ class _ItrListScreenState extends ConsumerState<ItrListScreen> {
       includeAppBar: false,
       backgroundColor: AppColors.authBackground,
       useScrollView: true,
-      centered: false,
+      centered: true,
+      useResponsiveMaxWidth: true,
+      maxContentWidth: 560,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.lg,

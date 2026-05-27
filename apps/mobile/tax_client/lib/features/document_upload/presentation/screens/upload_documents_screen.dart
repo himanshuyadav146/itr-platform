@@ -169,7 +169,9 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
       return CoreScaffold(
         includeAppBar: false,
         backgroundColor: AppColors.authBackground,
-        centered: false,
+        centered: true,
+        useResponsiveMaxWidth: true,
+        maxContentWidth: 560,
         useScrollView: false,
         padding: const EdgeInsets.all(AppSpacing.lg),
         body: const Center(
@@ -182,7 +184,9 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
       includeAppBar: false,
       backgroundColor: AppColors.authBackground,
       useScrollView: false,
-      centered: false,
+      centered: true,
+      useResponsiveMaxWidth: true,
+      maxContentWidth: 560,
       padding: EdgeInsets.zero,
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(24, 0, 24, 16),

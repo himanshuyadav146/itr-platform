@@ -8,16 +8,19 @@ import 'package:tax_client/core/common/widgets/bottom_nav_bar.dart';
 import 'package:tax_client/core/common/widgets/core_scaffold.dart';
 import 'package:tax_client/core/common/widgets/custom_card.dart';
 import 'package:tax_client/core/common/widgets/primary_button.dart';
+import 'package:tax_client/core/common/widgets/responsive_grid.dart';
 import 'package:tax_client/core/config/strings/app_strings.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/constant/api_constants.dart';
 import 'package:tax_client/core/network/token_storage.dart';
 import 'package:tax_client/core/utils/error_handler.dart';
+import 'package:tax_client/features/home/domain/dashboard_mode.dart';
 import 'package:tax_client/features/home/presentation/providers/home_dashboard_provider.dart';
 import 'package:tax_client/features/packages/data/models/package_model.dart';
 import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
 import 'package:tax_client/features/packages/presentation/widgets/package_bottom_sheet.dart';
+import 'package:tax_client/features/personal_info/data/models/itr_personal_detail_model.dart';
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_provider.dart';
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_state.dart';
 import 'package:tax_client/features/status/data/models/itr_detailed_status_model.dart';
@@ -125,36 +128,196 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _openStatus(BuildContext context, HomeDashboardSnapshot snapshot) {
-    final activeDraft = snapshot.activeDraft;
-    if (activeDraft != null) {
-      context.push('/status', extra: activeDraft);
+    final focusItr = snapshot.focusItr;
+    if (focusItr != null) {
+      context.push('/status', extra: focusItr);
       return;
     }
 
     context.go('/orders');
   }
 
-  void _openDocuments(
+  Future<void> _openPersonalInfoForFocus(
     BuildContext context,
     HomeDashboardSnapshot snapshot,
     AsyncValue<List<PackageModel>> packagesAsync,
-  ) {
-    _syncSelectedPackage(snapshot, packagesAsync);
-    context.push('/document_upload');
-  }
-
-  void _syncSelectedPackage(
-    HomeDashboardSnapshot snapshot,
-    AsyncValue<List<PackageModel>> packagesAsync,
-  ) {
-    final currentSelection = ref.read(selectedPackageProvider);
-    if (currentSelection != null) {
+  ) async {
+    final focusItr = snapshot.focusItr;
+    if (focusItr == null) {
+      await _handleFileItr(context, JourneyType.ITR);
       return;
     }
 
-    final packageId = snapshot.activeDraft?.packageId;
-    final packages = packagesAsync.valueOrNull;
-    if (packageId == null || packages == null) {
+    await _syncPackageFromItr(focusItr, packagesAsync);
+    final tokenStorage = ref.read(tokenStorageProvider);
+    await tokenStorage.savePanNumber(focusItr.panNumber.trim());
+
+    if (!context.mounted) return;
+    context.push('/personal_info', extra: focusItr);
+  }
+
+  Future<int?> _resolvePaymentPackageId(
+    ItrPersonalDetailModel focusItr,
+    AsyncValue<List<PackageModel>> packagesAsync, {
+    PackageModel? fallbackPackage,
+  }) async {
+    if (focusItr.packageId != null) {
+      return focusItr.packageId;
+    }
+
+    await _syncPackageFromItr(focusItr, packagesAsync);
+    final synced = ref.read(selectedPackageProvider) ?? fallbackPackage;
+    if (synced != null) {
+      return int.tryParse(synced.id);
+    }
+
+    final packageName = focusItr.packageName?.trim();
+    if (packageName == null || packageName.isEmpty) {
+      return null;
+    }
+
+    var packages = packagesAsync.valueOrNull;
+    if (packages == null) {
+      await ref.read(packagesProvider.notifier).getPackages();
+      packages = ref.read(packagesProvider).valueOrNull;
+    }
+    if (packages == null) {
+      return null;
+    }
+
+    for (final package in packages) {
+      if (package.name.trim().toLowerCase() == packageName.toLowerCase()) {
+        ref.read(selectedPackageProvider.notifier).state = package;
+        return int.tryParse(package.id);
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _openPaymentForFocus(
+    BuildContext context,
+    HomeDashboardSnapshot snapshot,
+    AsyncValue<List<PackageModel>> packagesAsync,
+  ) async {
+    final focusItr = snapshot.focusItr;
+    if (focusItr == null) {
+      if (context.mounted) {
+        ErrorHandler.showError(
+          context,
+          'No active ITR found. Please start filing first.',
+        );
+      }
+      return;
+    }
+
+    ref.read(journeyTypeProvider.notifier).state = JourneyType.ITR;
+
+    final pan = focusItr.panNumber.trim();
+    if (pan.isEmpty) {
+      if (context.mounted) {
+        ErrorHandler.showError(
+          context,
+          'PAN is required before payment. Please complete personal information.',
+        );
+        context.push('/personal_info', extra: focusItr);
+      }
+      return;
+    }
+
+    await ref.read(tokenStorageProvider).savePanNumber(pan);
+    await _syncPackageFromItr(focusItr, packagesAsync);
+
+    final selectedPackage = ref.read(selectedPackageProvider);
+    var packageId = await _resolvePaymentPackageId(
+      focusItr,
+      packagesAsync,
+      fallbackPackage: selectedPackage,
+    );
+
+    if (packageId == null && context.mounted) {
+      final picked = await showPackageBottomSheet(context, ref);
+      if (picked != null) {
+        packageId = int.tryParse(picked.id);
+      }
+    }
+
+    if (!context.mounted) return;
+
+    if (packageId == null) {
+      ErrorHandler.showError(
+        context,
+        'Please select a package to continue to payment.',
+      );
+      return;
+    }
+
+    context.push('/payment?packageId=$packageId');
+  }
+
+  Future<void> _resolveDashboardAction(
+    BuildContext context,
+    HomeDashboardSnapshot snapshot,
+    AsyncValue<List<PackageModel>> packagesAsync,
+    DashboardActionItem action,
+  ) async {
+    switch (action.type) {
+      case DashboardActionType.informationRequired:
+        await _openPersonalInfoForFocus(context, snapshot, packagesAsync);
+        break;
+      case DashboardActionType.documentRequired:
+        await _openDocuments(context, snapshot, packagesAsync);
+        break;
+      case DashboardActionType.clarificationRequired:
+      case DashboardActionType.general:
+        if (snapshot.focusItr != null) {
+          _openStatus(context, snapshot);
+        } else {
+          await _openDocuments(context, snapshot, packagesAsync);
+        }
+        break;
+    }
+  }
+
+  Future<void> _openDocuments(
+    BuildContext context,
+    HomeDashboardSnapshot snapshot,
+    AsyncValue<List<PackageModel>> packagesAsync,
+  ) async {
+    final latestFiling = snapshot.documentVaultItr;
+    if (latestFiling == null) {
+      if (context.mounted) {
+        ErrorHandler.showError(
+          context,
+          'PAN not found. Please complete personal information first.',
+        );
+      }
+      return;
+    }
+
+    final tokenStorage = ref.read(tokenStorageProvider);
+    await tokenStorage.savePanNumber(latestFiling.panNumber.trim());
+    await _syncPackageFromItr(latestFiling, packagesAsync);
+
+    if (!context.mounted) return;
+    context.push('/document_upload');
+  }
+
+  Future<void> _syncPackageFromItr(
+    ItrPersonalDetailModel itrItem,
+    AsyncValue<List<PackageModel>> packagesAsync,
+  ) async {
+    final packageId = itrItem.packageId;
+    if (packageId == null) {
+      return;
+    }
+
+    var packages = packagesAsync.valueOrNull;
+    if (packages == null) {
+      await ref.read(packagesProvider.notifier).getPackages();
+      packages = ref.read(packagesProvider).valueOrNull;
+    }
+    if (packages == null) {
       return;
     }
 
@@ -244,7 +407,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         includeAppBar: false,
         includeDrawer: false,
         useScrollView: true,
-        centered: false,
+        centered: true,
+        useResponsiveMaxWidth: true,
+        maxContentWidth: 560,
         padding: EdgeInsets.zero,
         body: dashboardAsync.when(
           loading: () => Padding(
@@ -327,6 +492,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       onContinueFiling: () =>
                           _handleFileItr(context, JourneyType.ITR),
                       onTrackStatus: () => _openStatus(context, snapshot),
+                      onCompletePayment: () => _openPaymentForFocus(
+                        context,
+                        snapshot,
+                        packagesAsync,
+                      ),
                       onOpenTaxCalculator: () => _openTaxCalculator(context),
                       onOpenDocuments: () =>
                           _openDocuments(context, snapshot, packagesAsync),
@@ -334,6 +504,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       onContactSupport: () {
                         _openContactUs();
                       },
+                      onResolveAction: (action) => _resolveDashboardAction(
+                        context,
+                        snapshot,
+                        packagesAsync,
+                        action,
+                      ),
                     )
                   else
                     _WelcomeDashboardView(
@@ -450,16 +626,24 @@ class _WelcomeDashboardView extends StatelessWidget {
               : '${setupCards.length} TASKS READY',
         ),
         const SizedBox(height: AppSpacing.lg),
-        SizedBox(
-          height: 248,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: setupCards.length,
-            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
-            itemBuilder: (context, index) => _SetupProgressCard(
-              data: setupCards[index],
-            ),
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final cardWidth =
+                ResponsiveLayout.horizontalCardWidth(constraints.maxWidth);
+            return SizedBox(
+              height: 248,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: setupCards.length,
+                separatorBuilder: (_, __) =>
+                    const SizedBox(width: AppSpacing.md),
+                itemBuilder: (context, index) => SizedBox(
+                  width: cardWidth,
+                  child: _SetupProgressCard(data: setupCards[index]),
+                ),
+              ),
+            );
+          },
         ),
         const SizedBox(height: AppSpacing.xxxl),
         const _SectionHeadingBlock(
@@ -485,109 +669,105 @@ class _ActiveDashboardView extends StatelessWidget {
   final PackageModel? selectedPackage;
   final VoidCallback onContinueFiling;
   final VoidCallback onTrackStatus;
+  final VoidCallback onCompletePayment;
   final VoidCallback onOpenTaxCalculator;
   final VoidCallback onOpenDocuments;
   final VoidCallback onOpenOrders;
   final VoidCallback onContactSupport;
+  final void Function(DashboardActionItem action) onResolveAction;
 
   const _ActiveDashboardView({
     required this.snapshot,
     required this.selectedPackage,
     required this.onContinueFiling,
     required this.onTrackStatus,
+    required this.onCompletePayment,
     required this.onOpenTaxCalculator,
     required this.onOpenDocuments,
     required this.onOpenOrders,
     required this.onContactSupport,
+    required this.onResolveAction,
   });
 
   @override
   Widget build(BuildContext context) {
-    final urgentUpdates = snapshot.urgentUpdates;
+    final pendingActions = snapshot.pendingActions;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _WorkspaceHeroCard(
-          title: _workspaceHeadline(snapshot, selectedPackage),
-          description: _workspaceDescription(snapshot, selectedPackage),
-          stageLabel: _workspaceStageLabel(snapshot, selectedPackage),
-          primaryActionText: selectedPackage != null && snapshot.activeDraft == null
-              ? 'Continue Filing'
-              : 'Track Status',
-          secondaryActionText: 'View Orders',
-          onPrimaryAction: selectedPackage != null && snapshot.activeDraft == null
-              ? onContinueFiling
-              : onTrackStatus,
-          onSecondaryAction: onOpenOrders,
-        ),
-        const SizedBox(height: AppSpacing.xxl),
-        _SectionHeader(
-          title: 'Live Tracking',
-          trailing: snapshot.activeStatus?.itrStatus?.overallStatus != null
-              ? _toCaps(snapshot.activeStatus!.itrStatus!.overallStatus!)
-              : 'ACTIVE WORKSPACE',
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        _WorkspaceOverviewCard(
-          snapshot: snapshot,
-          selectedPackage: selectedPackage,
-        ),
-        const SizedBox(height: AppSpacing.xxl),
-        _SectionHeader(
-          title: 'Critical Actions',
-          trailing: urgentUpdates.isEmpty
-              ? 'ON TRACK'
-              : '${urgentUpdates.length} OPEN',
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        if (urgentUpdates.isEmpty)
-          _CriticalActionCard(
-            title: _fallbackActionTitle(snapshot, selectedPackage),
-            description: _fallbackActionDescription(snapshot, selectedPackage),
-            accent: AppColors.authAmber,
-            icon: Icons.notifications_active_outlined,
-            actionLabel: selectedPackage != null && snapshot.activeDraft == null
-                ? 'Continue'
-                : 'Open',
-            onTap: selectedPackage != null && snapshot.activeDraft == null
-                ? onContinueFiling
-                : onOpenDocuments,
-          )
-        else
-          ...urgentUpdates.map(
-            (update) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: _CriticalActionCard(
-                title: update.status == null || update.status!.trim().isEmpty
-                    ? 'Action Required'
-                    : _toCaps(update.status!),
-                description:
-                    update.message ?? 'Please review your current filing step.',
-                accent: AppColors.authAmber,
-                icon: Icons.warning_amber_rounded,
-                actionLabel: 'Review',
-                onTap: onOpenDocuments,
+        if (snapshot.showPendingPayment) ...[
+          _PendingPaymentCard(
+            snapshot: snapshot,
+            selectedPackage: selectedPackage,
+            onCompletePayment: onCompletePayment,
+          ),
+        ] else if (snapshot.showLiveTracking) ...[
+          _WorkspaceHeroCard(
+            title: _workspaceHeadline(snapshot, selectedPackage),
+            description: _workspaceDescription(snapshot, selectedPackage),
+            stageLabel: _workspaceStageLabel(snapshot, selectedPackage),
+            primaryActionText: 'Track Status',
+            secondaryActionText: 'View Orders',
+            onPrimaryAction: onTrackStatus,
+            onSecondaryAction: onOpenOrders,
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+          _SectionHeader(
+            title: 'Live Tracking',
+            trailing: snapshot.activeStatus?.itrStatus?.overallStatus != null
+                ? _toCaps(snapshot.activeStatus!.itrStatus!.overallStatus!)
+                : 'IN PROGRESS',
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          _WorkspaceOverviewCard(
+            snapshot: snapshot,
+            selectedPackage: selectedPackage,
+          ),
+          if (snapshot.showCriticalActions) ...[
+            const SizedBox(height: AppSpacing.xxl),
+            _SectionHeader(
+              title: 'Critical Actions',
+              trailing: '${pendingActions.length} OPEN',
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            ...pendingActions.map(
+              (action) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: _CriticalActionCard(
+                  title: action.title,
+                  description: action.message,
+                  requestedBy: action.requestedBy,
+                  createdAt: action.createdAt,
+                  accent: AppColors.authAmber,
+                  icon: _iconForActionType(action.type),
+                  actionLabel: 'Resolve Now',
+                  onTap: () => onResolveAction(action),
+                ),
               ),
             ),
+          ],
+        ] else ...[
+          _WorkspaceHeroCard(
+            title: _workspaceHeadline(snapshot, selectedPackage),
+            description: _workspaceDescription(snapshot, selectedPackage),
+            stageLabel: _workspaceStageLabel(snapshot, selectedPackage),
+            primaryActionText: 'Start Filing',
+            secondaryActionText: 'View Orders',
+            onPrimaryAction: onContinueFiling,
+            onSecondaryAction: onOpenOrders,
           ),
+        ],
         const SizedBox(height: AppSpacing.xxxl),
         const _SectionHeadingBlock(
           title: 'Quick Tools',
           subtitle: 'Jump straight into the next part of your filing workflow.',
         ),
         const SizedBox(height: AppSpacing.xl),
-        Wrap(
+        ResponsiveWrapGrid(
           spacing: AppSpacing.md,
           runSpacing: AppSpacing.md,
           children: [
-            _QuickToolCard(
-              icon: Icons.calculate_outlined,
-              title: 'Tax Calculator',
-              description: 'Estimate tax with the latest slab logic and regime comparison.',
-              accent: AppColors.authAmber,
-              onTap: onOpenTaxCalculator,
-            ),
             _QuickToolCard(
               icon: Icons.description_outlined,
               title: 'File ITR',
@@ -597,12 +777,22 @@ class _ActiveDashboardView extends StatelessWidget {
               onTap: onContinueFiling,
             ),
             _QuickToolCard(
-              icon: Icons.folder_open_outlined,
-              title: 'Document Vault',
-              description: 'Upload or review the files needed for your return.',
-              accent: AppColors.authHeading,
-              onTap: onOpenDocuments,
+              icon: Icons.calculate_outlined,
+              title: 'Tax Calculator',
+              description:
+                  'Estimate tax with the latest slab logic and regime comparison.',
+              accent: AppColors.authAmber,
+              onTap: onOpenTaxCalculator,
             ),
+            if (snapshot.hasDocumentVaultAccess)
+              _QuickToolCard(
+                icon: Icons.folder_open_outlined,
+                title: 'Document Vault',
+                description:
+                    'Upload or review the files needed for your return.',
+                accent: AppColors.authHeading,
+                onTap: onOpenDocuments,
+              ),
             _QuickToolCard(
               icon: Icons.receipt_long_outlined,
               title: 'Orders',
@@ -723,6 +913,128 @@ class _HeroCard extends StatelessWidget {
       ),
     );
   }
+}
+
+IconData _iconForActionType(DashboardActionType type) {
+  switch (type) {
+    case DashboardActionType.documentRequired:
+      return Icons.folder_open_outlined;
+    case DashboardActionType.informationRequired:
+      return Icons.person_outline_rounded;
+    case DashboardActionType.clarificationRequired:
+      return Icons.help_outline_rounded;
+    case DashboardActionType.general:
+      return Icons.warning_amber_rounded;
+  }
+}
+
+class _PendingPaymentCard extends StatelessWidget {
+  final HomeDashboardSnapshot snapshot;
+  final PackageModel? selectedPackage;
+  final VoidCallback onCompletePayment;
+
+  const _PendingPaymentCard({
+    required this.snapshot,
+    required this.selectedPackage,
+    required this.onCompletePayment,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final focus = snapshot.focusItr;
+    final fy = focus?.financialYear ?? 'current year';
+    final packageName =
+        focus?.packageName ?? selectedPackage?.name ?? 'Not selected';
+    final statusText = _pendingPaymentDescription(focus, fy);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        color: const Color(0x12FFB95F),
+        border: Border.all(color: AppColors.authAmber.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.authAmber.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+                ),
+                child: Text(
+                  'PENDING PAYMENT',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: AppColors.authAmber,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Payment required',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: AppColors.authHeading,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            statusText,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: AppColors.authMuted,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Package: $packageName',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: AppColors.authHeading,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          PrimaryButton(
+            text: 'Complete Payment',
+            onPressed: onCompletePayment,
+            minHeight: 56,
+            borderRadius: AppSpacing.radiusPill,
+            gradient: const LinearGradient(
+              colors: [AppColors.authAmber, Color(0xFFE89A2E)],
+            ),
+            foregroundColor: AppColors.authButtonText,
+            textStyle: theme.textTheme.titleMedium?.copyWith(
+              color: AppColors.authButtonText,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _pendingPaymentDescription(ItrPersonalDetailModel? focus, String fy) {
+  final display = focus?.statusDisplayText?.trim();
+  if (display != null &&
+      display.isNotEmpty &&
+      display.toLowerCase() != 'pending_payment') {
+    return display;
+  }
+
+  return 'Complete payment for FY $fy to unlock live tracking and expert processing.';
 }
 
 class _WorkspaceHeroCard extends StatelessWidget {
@@ -937,15 +1249,15 @@ class _WorkspaceOverviewCard extends StatelessWidget {
         ? activeStep!.notes!
         : _statusDescription(snapshot, selectedPackage);
     final packageName = selectedPackage?.name ??
-        snapshot.activeDraft?.packageName ??
-        snapshot.activeOrder?.packageName ??
+        snapshot.focusItr?.packageName ??
+        snapshot.focusOrder?.packageName ??
         'Not selected';
     final paymentStatus =
-        snapshot.activeDraft?.paymentStatus ?? snapshot.activeOrder?.status;
+        snapshot.focusItr?.paymentStatus ?? snapshot.focusOrder?.status;
     final assignmentName =
         snapshot.activeStatus?.assignmentStatus?.professionalName ?? 'Assigning soon';
     final orderId =
-        snapshot.activeOrder?.orderId ?? 'Will appear after payment';
+        snapshot.focusOrder?.orderId ?? snapshot.activeStatus?.orderId ?? '—';
 
     return Container(
       width: double.infinity,
@@ -1275,6 +1587,8 @@ class _SectionHeadingBlock extends StatelessWidget {
 class _CriticalActionCard extends StatelessWidget {
   final String title;
   final String description;
+  final String? requestedBy;
+  final String? createdAt;
   final Color accent;
   final IconData icon;
   final String actionLabel;
@@ -1283,6 +1597,8 @@ class _CriticalActionCard extends StatelessWidget {
   const _CriticalActionCard({
     required this.title,
     required this.description,
+    this.requestedBy,
+    this.createdAt,
     required this.accent,
     required this.icon,
     required this.actionLabel,
@@ -1337,6 +1653,24 @@ class _CriticalActionCard extends StatelessWidget {
                         height: 1.45,
                       ),
                     ),
+                    if (requestedBy != null && requestedBy!.trim().isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Requested by: $requestedBy',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.authMuted,
+                        ),
+                      ),
+                    ],
+                    if (createdAt != null && createdAt!.trim().isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Requested on ${_formatActionDate(createdAt!)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.authMuted,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1375,50 +1709,47 @@ class _QuickToolCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return SizedBox(
-      width: 168,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-          child: Ink(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0x08FFFFFF),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-              border: Border.all(color: AppColors.borderOnDark),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                  ),
-                  child: Icon(icon, color: accent),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+        child: Ink(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0x08FFFFFF),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+            border: Border.all(color: AppColors.borderOnDark),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: AppColors.authHeading,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Icon(icon, color: accent),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: AppColors.authHeading,
+                  fontWeight: FontWeight.w700,
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  description,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.authMuted,
-                    height: 1.45,
-                  ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                description,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.authMuted,
+                  height: 1.45,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1435,14 +1766,12 @@ class _SetupProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return SizedBox(
-      width: 280,
-      child: CustomCard(
-        onTap: data.onTap,
-        backgroundColor: const Color(0x08FFFFFF),
-        border: Border.all(color: AppColors.borderOnDark),
-        padding: const EdgeInsets.all(24),
-        child: Column(
+    return CustomCard(
+      onTap: data.onTap,
+      backgroundColor: const Color(0x08FFFFFF),
+      border: Border.all(color: AppColors.borderOnDark),
+      padding: const EdgeInsets.all(24),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
@@ -1496,7 +1825,6 @@ class _SetupProgressCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -1753,11 +2081,37 @@ class _WhyCardData {
   });
 }
 
+String _formatActionDate(String raw) {
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) {
+    return raw;
+  }
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${parsed.day} ${months[parsed.month - 1]} ${parsed.year}';
+}
+
 String _workspaceSubtitle(
   HomeDashboardSnapshot snapshot,
   PackageModel? selectedPackage,
 ) {
-  if (selectedPackage != null && snapshot.activeDraft == null) {
+  if (snapshot.showPendingPayment) {
+    return 'Complete payment for your latest ITR to unlock live tracking.';
+  }
+
+  if (selectedPackage != null && snapshot.focusItr == null) {
     return '${selectedPackage.name} selected. Complete your setup to begin.';
   }
 
@@ -1765,9 +2119,9 @@ String _workspaceSubtitle(
     return _toCaps(snapshot.activeStatus!.itrStatus!.overallStatus!);
   }
 
-  if (snapshot.activeDraft?.statusDisplayText != null &&
-      snapshot.activeDraft!.statusDisplayText!.trim().isNotEmpty) {
-    return snapshot.activeDraft!.statusDisplayText!;
+  if (snapshot.focusItr?.statusDisplayText != null &&
+      snapshot.focusItr!.statusDisplayText!.trim().isNotEmpty) {
+    return snapshot.focusItr!.statusDisplayText!;
   }
 
   return 'Resume the latest filing tasks and monitor progress.';
@@ -1777,7 +2131,11 @@ String _workspaceHeadline(
   HomeDashboardSnapshot snapshot,
   PackageModel? selectedPackage,
 ) {
-  if (selectedPackage != null && snapshot.activeDraft == null) {
+  if (snapshot.showPendingPayment) {
+    return 'Your latest ITR is\nwaiting for payment.';
+  }
+
+  if (selectedPackage != null && snapshot.focusItr == null) {
     return 'Your package is selected.\nLet\'s start the filing.';
   }
 
@@ -1803,9 +2161,9 @@ String _workspaceDescription(
     return 'Your filing is being handled by ${snapshot.activeStatus!.assignmentStatus!.professionalName}. Keep an eye on action items to avoid delays.';
   }
 
-  if (snapshot.activeDraft?.statusDisplayText != null &&
-      snapshot.activeDraft!.statusDisplayText!.trim().isNotEmpty) {
-    return snapshot.activeDraft!.statusDisplayText!;
+  if (snapshot.focusItr?.statusDisplayText != null &&
+      snapshot.focusItr!.statusDisplayText!.trim().isNotEmpty) {
+    return snapshot.focusItr!.statusDisplayText!;
   }
 
   return 'Review your live progress, clear pending tasks, and jump back into the parts of the workflow that need attention.';
@@ -1815,7 +2173,11 @@ String _workspaceStageLabel(
   HomeDashboardSnapshot snapshot,
   PackageModel? selectedPackage,
 ) {
-  if (selectedPackage != null && snapshot.activeDraft == null) {
+  if (snapshot.showPendingPayment) {
+    return 'PAYMENT PENDING';
+  }
+
+  if (selectedPackage != null && snapshot.focusItr == null) {
     return 'PACKAGE SELECTED';
   }
 
@@ -1826,12 +2188,12 @@ String _workspaceStageLabel(
     return '${status.currentStep}/${status.totalSteps} STEPS';
   }
 
-  if (snapshot.activeDraft?.paymentStatus != null &&
-      snapshot.activeDraft!.paymentStatus!.trim().isNotEmpty) {
-    return 'PAYMENT ${_toCaps(snapshot.activeDraft!.paymentStatus!)}';
+  final overall = snapshot.activeStatus?.itrStatus?.overallStatus;
+  if (overall != null && overall.trim().isNotEmpty) {
+    return _toCaps(overall);
   }
 
-  return 'ACTIVE WORKSPACE';
+  return 'IN PROGRESS';
 }
 
 double _workspaceProgress(
@@ -1846,15 +2208,19 @@ double _workspaceProgress(
     return normalized;
   }
 
-  if (selectedPackage != null && snapshot.activeDraft == null) {
+  if (snapshot.showPendingPayment) {
+    return 0.1;
+  }
+
+  if (selectedPackage != null && snapshot.focusItr == null) {
     return 0.25;
   }
 
-  if (snapshot.activeDraft != null) {
+  if (snapshot.focusItr != null) {
     return 0.45;
   }
 
-  if (snapshot.activeOrder != null) {
+  if (snapshot.focusOrder != null) {
     return 0.7;
   }
 
@@ -1872,13 +2238,13 @@ String _progressSummary(
     return '${status.currentStep}/${status.totalSteps} expert stages completed';
   }
 
-  if (selectedPackage != null && snapshot.activeDraft == null) {
+  if (selectedPackage != null && snapshot.focusItr == null) {
     return 'Package selected and ready to start';
   }
 
-  if (snapshot.activeDraft?.statusDisplayText != null &&
-      snapshot.activeDraft!.statusDisplayText!.trim().isNotEmpty) {
-    return snapshot.activeDraft!.statusDisplayText!;
+  if (snapshot.focusItr?.statusDisplayText != null &&
+      snapshot.focusItr!.statusDisplayText!.trim().isNotEmpty) {
+    return snapshot.focusItr!.statusDisplayText!;
   }
 
   return 'Continue your active workspace';
@@ -1902,46 +2268,16 @@ String _statusDescription(
     }
   }
 
-  if (selectedPackage != null && snapshot.activeDraft == null) {
+  if (selectedPackage != null && snapshot.focusItr == null) {
     return 'Complete your profile details and upload documents so we can create your active return.';
   }
 
-  if (snapshot.activeOrder?.status != null &&
-      snapshot.activeOrder!.status!.trim().isNotEmpty) {
-    return 'Latest order status: ${_toCaps(snapshot.activeOrder!.status!)}';
+  if (snapshot.focusOrder?.status != null &&
+      snapshot.focusOrder!.status!.trim().isNotEmpty) {
+    return 'Latest order status: ${_toCaps(snapshot.focusOrder!.status!)}';
   }
 
   return 'Your filing workspace is open and ready for the next action.';
-}
-
-String _fallbackActionTitle(
-  HomeDashboardSnapshot snapshot,
-  PackageModel? selectedPackage,
-) {
-  if (selectedPackage != null && snapshot.activeDraft == null) {
-    return 'Complete your profile setup';
-  }
-
-  if (snapshot.activeDraft != null) {
-    return 'Upload remaining documents';
-  }
-
-  return 'Review your latest order';
-}
-
-String _fallbackActionDescription(
-  HomeDashboardSnapshot snapshot,
-  PackageModel? selectedPackage,
-) {
-  if (selectedPackage != null && snapshot.activeDraft == null) {
-    return 'Your package is ready. Add personal details to move from onboarding into the active filing flow.';
-  }
-
-  if (snapshot.activeDraft != null) {
-    return 'Your filing has started. Open the document vault and make sure all required files are available for review.';
-  }
-
-  return 'Open your orders and latest status updates to make sure nothing is blocking progress.';
 }
 
 String _toCaps(String value) {

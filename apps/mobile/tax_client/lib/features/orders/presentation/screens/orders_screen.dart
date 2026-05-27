@@ -63,7 +63,9 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       includeAppBar: false,
       backgroundColor: AppColors.authBackground,
       useScrollView: false,
-      centered: false,
+      centered: true,
+      useResponsiveMaxWidth: true,
+      maxContentWidth: 560,
       padding: EdgeInsets.zero,
       bottomNavigationBar: const BottomNavBar(),
       body: Padding(

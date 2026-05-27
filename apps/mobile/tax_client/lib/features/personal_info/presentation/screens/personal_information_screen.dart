@@ -252,7 +252,7 @@ class _PersonalInformationScreenState
       includeAppBar: false,
       backgroundColor: AppColors.authBackground,
       useScrollView: true,
-      centered: false,
+      centered: true,
       useResponsiveMaxWidth: true,
       responsiveBreakpoint: 600,
       maxContentWidth: 560,
