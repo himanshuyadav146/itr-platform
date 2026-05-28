@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// Breakpoints and helpers for width-aware grids across phone, tablet, and wide layouts.
@@ -45,6 +47,9 @@ class ResponsiveWrapGrid extends StatelessWidget {
   final int tabletColumns;
   final int wideColumns;
 
+  /// When true, tiles in the same row share the tallest tile's height.
+  final bool matchRowHeights;
+
   const ResponsiveWrapGrid({
     super.key,
     required this.children,
@@ -53,6 +58,7 @@ class ResponsiveWrapGrid extends StatelessWidget {
     this.phoneColumns = 2,
     this.tabletColumns = 3,
     this.wideColumns = 4,
+    this.matchRowHeights = false,
   });
 
   @override
@@ -71,17 +77,51 @@ class ResponsiveWrapGrid extends StatelessWidget {
           spacing: spacing,
         );
 
-        return Wrap(
-          spacing: spacing,
-          runSpacing: runSpacing,
-          children: children
-              .map(
-                (child) => SizedBox(
-                  width: itemWidth,
-                  child: child,
+        if (!matchRowHeights) {
+          return Wrap(
+            spacing: spacing,
+            runSpacing: runSpacing,
+            children: children
+                .map(
+                  (child) => SizedBox(
+                    width: itemWidth,
+                    child: child,
+                  ),
+                )
+                .toList(),
+          );
+        }
+
+        final rows = <Widget>[];
+        for (var i = 0; i < children.length; i += columns) {
+          final end = math.min(i + columns, children.length);
+          final rowChildren = children.sublist(i, end);
+          rows.add(
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: end < children.length ? runSpacing : 0,
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var j = 0; j < rowChildren.length; j++) ...[
+                      if (j > 0) SizedBox(width: spacing),
+                      SizedBox(
+                        width: itemWidth,
+                        child: rowChildren[j],
+                      ),
+                    ],
+                  ],
                 ),
-              )
-              .toList(),
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: rows,
         );
       },
     );

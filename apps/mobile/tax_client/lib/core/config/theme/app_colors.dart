@@ -42,7 +42,20 @@ class AppColors {
 
   // Surfaces — dark mode (Figma tax_app: navy shell + elevated cards)
   static const backgroundDark = brandNavy; // #1E1E2C scaffold
-  static const surfaceDark = brandNavyLight; // #2D2D44 cards / bottom nav
+  static const surfaceDark = brandNavyLight; // #2D2D44 elevated cards
+
+  /// Bottom tab bar shell (Figma Welcome Dashboard — `Nav` gradient).
+  static const navBarBackground = Color(0xFF0B1326);
+  static const navBarGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    stops: [0.0, 0.45, 1.0],
+    colors: [
+      Color(0x000B1326),
+      Color(0xCC0B1326),
+      navBarBackground,
+    ],
+  );
   static const surfaceVariantDark = brandNavyMuted; // #3D3D5C inputs / chips
 
   // Text

@@ -25,6 +25,14 @@ import 'package:tax_client/features/personal_info/presentation/providers/persona
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_state.dart';
 import 'package:tax_client/features/status/data/models/itr_detailed_status_model.dart';
 
+/// Horizontal + bottom padding for dashboard body. Top inset comes from [CoreScaffold] SafeArea.
+const _homeDashboardPadding = EdgeInsets.fromLTRB(
+  AppSpacing.lg,
+  AppSpacing.lg,
+  AppSpacing.lg,
+  AppSpacing.xxl,
+);
+
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -406,6 +414,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: CoreScaffold(
         includeAppBar: false,
         includeDrawer: false,
+        backgroundColor: AppColors.authBackground,
         useScrollView: true,
         centered: true,
         useResponsiveMaxWidth: true,
@@ -413,12 +422,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: EdgeInsets.zero,
         body: dashboardAsync.when(
           loading: () => Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              96,
-              AppSpacing.lg,
-              AppSpacing.xxl,
-            ),
+            padding: _homeDashboardPadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -438,12 +442,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           error: (error, stackTrace) => Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              96,
-              AppSpacing.lg,
-              AppSpacing.xxl,
-            ),
+            padding: _homeDashboardPadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -465,12 +464,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 selectedPackage != null || snapshot.hasWorkspace;
 
             return Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                96,
-                AppSpacing.lg,
-                AppSpacing.xxl,
-              ),
+              padding: _homeDashboardPadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -767,6 +761,7 @@ class _ActiveDashboardView extends StatelessWidget {
         ResponsiveWrapGrid(
           spacing: AppSpacing.md,
           runSpacing: AppSpacing.md,
+          matchRowHeights: true,
           children: [
             _QuickToolCard(
               icon: Icons.description_outlined,
@@ -1715,6 +1710,7 @@ class _QuickToolCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         child: Ink(
+          height: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: const Color(0x08FFFFFF),
@@ -1723,6 +1719,7 @@ class _QuickToolCard extends StatelessWidget {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.max,
             children: [
               Container(
                 width: 44,
@@ -1742,11 +1739,15 @@ class _QuickToolCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              Text(
-                description,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.authMuted,
-                  height: 1.45,
+              Expanded(
+                child: Text(
+                  description,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.authMuted,
+                    height: 1.45,
+                  ),
                 ),
               ),
             ],

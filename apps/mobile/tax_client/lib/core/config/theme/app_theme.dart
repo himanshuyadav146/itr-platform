@@ -145,9 +145,16 @@ class AppTheme {
         ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: colorScheme.surface,
-        selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurface.withValues(alpha: 0.5),
+        backgroundColor: Colors.transparent,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.authMuted,
+        selectedLabelStyle: baseTextTheme.labelSmall?.copyWith(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: baseTextTheme.labelSmall?.copyWith(
+          color: AppColors.authMuted,
+        ),
         type: BottomNavigationBarType.fixed,
         elevation: 0,
       ),
