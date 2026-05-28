@@ -10,8 +10,9 @@ import 'package:tax_client/features/personal_info/presentation/providers/persona
 import 'package:tax_client/features/status/data/models/itr_detailed_status_model.dart';
 import 'package:tax_client/features/status/domain/usecases/get_detailed_status.dart';
 
-final homeDashboardSnapshotProvider =
-    FutureProvider<HomeDashboardSnapshot>((ref) async {
+final homeDashboardSnapshotProvider = FutureProvider<HomeDashboardSnapshot>((
+  ref,
+) async {
   final tokenStorage = ref.read(tokenStorageProvider);
   final userId = await tokenStorage.getUserId();
 
@@ -53,11 +54,7 @@ class _DashboardFocus {
   final ItrPersonalDetailModel? focusItr;
   final OrderModel? focusOrder;
 
-  const _DashboardFocus({
-    required this.mode,
-    this.focusItr,
-    this.focusOrder,
-  });
+  const _DashboardFocus({required this.mode, this.focusItr, this.focusOrder});
 }
 
 class HomeDashboardSnapshot {
@@ -94,8 +91,7 @@ class HomeDashboardSnapshot {
 
   bool get showLiveTracking => mode == DashboardMode.postPayment;
 
-  bool get showCriticalActions =>
-      showLiveTracking && pendingActions.isNotEmpty;
+  bool get showCriticalActions => showLiveTracking && pendingActions.isNotEmpty;
 
   int get pendingActionsCount => pendingActions.length;
 
@@ -106,9 +102,9 @@ class HomeDashboardSnapshot {
 
     final expertName =
         activeStatus!.assignmentStatus?.professionalName?.trim().isNotEmpty ==
-                true
-            ? activeStatus!.assignmentStatus!.professionalName!.trim()
-            : 'Tax Expert';
+            true
+        ? activeStatus!.assignmentStatus!.professionalName!.trim()
+        : 'Tax Expert';
 
     final items = <DashboardActionItem>[];
     final seenMessages = <String>{};
@@ -135,7 +131,7 @@ class HomeDashboardSnapshot {
       }
       final item = DashboardActionItem.fromStepConcern(
         stepTitle: step.title ?? step.step ?? 'Filing step',
-        concernText: step.concern ?? step.notes,
+        concernText: step.concern?.message ?? step.notes,
         expertName: expertName,
       );
       if (seenMessages.add(item.message)) {
@@ -214,16 +210,13 @@ bool _hasPaymentSuccess(ItrPersonalDetailModel filing) {
 Future<List<OrderModel>> _loadOrders(GetOrders getOrders) async {
   final result = await getOrders(page: 1, limit: 20);
 
-  return result.fold(
-    (_) => <OrderModel>[],
-    (orders) {
-      final sorted = [...orders];
-      sorted.sort(
-        (a, b) => _compareDates(b.paidAt ?? b.createdAt, a.paidAt ?? a.createdAt),
-      );
-      return sorted;
-    },
-  );
+  return result.fold((_) => <OrderModel>[], (orders) {
+    final sorted = [...orders];
+    sorted.sort(
+      (a, b) => _compareDates(b.paidAt ?? b.createdAt, a.paidAt ?? a.createdAt),
+    );
+    return sorted;
+  });
 }
 
 Future<List<ItrPersonalDetailModel>> _loadItrs(
@@ -232,14 +225,13 @@ Future<List<ItrPersonalDetailModel>> _loadItrs(
 ) async {
   final result = await getItrByUser(GetItrByUserParams(userId: userId));
 
-  return result.fold(
-    (_) => <ItrPersonalDetailModel>[],
-    (GetItrByUserData data) {
-      final sorted = [...data.personalDetails];
-      sorted.sort((a, b) => _compareDates(b.createdAt, a.createdAt));
-      return sorted;
-    },
-  );
+  return result.fold((_) => <ItrPersonalDetailModel>[], (
+    GetItrByUserData data,
+  ) {
+    final sorted = [...data.personalDetails];
+    sorted.sort((a, b) => _compareDates(b.createdAt, a.createdAt));
+    return sorted;
+  });
 }
 
 Future<ItrDetailedStatusModel?> _loadStatus(

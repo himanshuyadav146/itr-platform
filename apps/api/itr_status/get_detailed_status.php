@@ -232,6 +232,26 @@ if ($paymentResult && $paymentResult->num_rows > 0) {
 // 3. GET ASSIGNMENT STATUS
 // =====================================================
 $assignmentStatus = null;
+// Resolve itrId from order when itrId is missing, so assignment details still work.
+if (!$itrId && $paymentStatus && !empty($paymentStatus['orderId'])) {
+    $orderIdEscaped = mysqli_real_escape_string($conn, $paymentStatus['orderId']);
+    $paymentLookupSql = "SELECT user_id, pan_number FROM payment_info WHERE order_id = '$orderIdEscaped' LIMIT 1";
+    $paymentLookupResult = $conn->query($paymentLookupSql);
+    if ($paymentLookupResult && $paymentLookupResult->num_rows > 0) {
+        $paymentLookup = $paymentLookupResult->fetch_assoc();
+        if (!empty($paymentLookup['user_id']) && !empty($paymentLookup['pan_number'])) {
+            $itrLookupSql = "SELECT id FROM itr_detail 
+                             WHERE userId = " . (int)$paymentLookup['user_id'] . "
+                             AND panNumber = '" . mysqli_real_escape_string($conn, $paymentLookup['pan_number']) . "'
+                             ORDER BY id DESC
+                             LIMIT 1";
+            $itrLookupResult = $conn->query($itrLookupSql);
+            if ($itrLookupResult && $itrLookupResult->num_rows > 0) {
+                $itrId = (int)$itrLookupResult->fetch_assoc()['id'];
+            }
+        }
+    }
+}
 if ($itrId) {
     $itrIdEscaped = (int)$itrId;
     // Support both schemas: assigned_to/assigned_at/is_active OR professional_id/assignment_date
@@ -389,10 +409,11 @@ if ($itrDetails) {
 $statusUpdates = [];
 if ($userId) {
     $userVal = mysqli_real_escape_string($conn, (string)$userId);
-    $itrIdFromRequest = isset($_GET['itrId']) ? (int)$_GET['itrId'] : null;
+    $itrIdFromRequest = isset($_GET['itrId']) && $_GET['itrId'] !== '' ? (int)$_GET['itrId'] : null;
+    $effectiveItrId = $itrIdFromRequest ?: (!empty($itrId) ? (int)$itrId : null);
     $concernsResult = null;
-    if ($itrIdFromRequest) {
-        $itrVal = (int)$itrIdFromRequest;
+    if ($effectiveItrId) {
+        $itrVal = (int)$effectiveItrId;
         $concernsSql = "SELECT id, concern_type, concern_text, status, resolved_at, resolved_by, created_at
                         FROM itr_order_concerns
                         WHERE itr_id = $itrVal AND user_id = '$userVal' AND concern_type = 'status_update'

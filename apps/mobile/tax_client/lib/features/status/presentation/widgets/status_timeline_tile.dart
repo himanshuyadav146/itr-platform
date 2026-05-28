@@ -39,8 +39,8 @@ class StatusTimelineTile extends StatelessWidget {
     final Color dotColor = isCompleted
         ? Colors.green
         : isActive
-            ? scheme.primary
-            : scheme.outlineVariant;
+        ? scheme.primary
+        : scheme.outlineVariant;
 
     final Color lineColor = isCompleted ? Colors.green : scheme.outlineVariant;
 
@@ -52,12 +52,10 @@ class StatusTimelineTile extends StatelessWidget {
         ? scheme.onSurface
         : scheme.onSurface.withOpacity(0.5);
 
-    final bool hasUpdates = statusUpdates != null &&
-        statusUpdates!.isNotEmpty &&
-        (isActive || isCompleted);
+    final bool hasUpdates = statusUpdates != null && statusUpdates!.isNotEmpty;
 
     final bool hasExpert =
-        expertInfo != null && expertInfo!.professionalName != null && (isActive || isCompleted);
+        expertInfo != null && expertInfo!.professionalName != null;
 
     return FadeTransition(
       opacity: animation,
@@ -93,7 +91,11 @@ class StatusTimelineTile extends StatelessWidget {
                         border: Border.all(color: Colors.white, width: 2),
                       ),
                       child: isCompleted
-                          ? const Icon(Icons.check, size: 14, color: Colors.white)
+                          ? const Icon(
+                              Icons.check,
+                              size: 14,
+                              color: Colors.white,
+                            )
                           : null,
                     ),
                   ),
@@ -147,7 +149,8 @@ class StatusTimelineTile extends StatelessWidget {
                         ),
 
                         // ── Fallback subtitle (only when no updates and no expert) ──
-                        if (!hasUpdates && !hasExpert &&
+                        if (!hasUpdates &&
+                            !hasExpert &&
                             subtitle != null &&
                             (isActive || isCompleted)) ...[
                           const SizedBox(height: 4),

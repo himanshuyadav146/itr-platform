@@ -32,7 +32,7 @@ class _StatusScreenState extends ConsumerState<StatusScreen>
   String get _statusItrId => widget.itrData?.itrId ?? '';
 
   void _loadStatus() {
-    if (_statusOrderId.isEmpty) {
+    if (_statusOrderId.isEmpty && _statusItrId.isEmpty) {
       return;
     }
     ref

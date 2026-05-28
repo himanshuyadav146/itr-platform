@@ -190,7 +190,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
             orderId: finalOrderId,
             paymentStatus: response['status'],
             transactionId: paymentId,
-            paymentMethod: 'card',
             gatewayResponse: gatewayResponse,
           );
 
