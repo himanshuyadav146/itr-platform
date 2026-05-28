@@ -4,7 +4,7 @@ const LOGIN_PATH = import.meta.env.VITE_LOGIN_PATH || '/auth/login.php';
 export const API_ENDPOINTS = {
   // Authentication
   LOGIN: LOGIN_PATH,
-  REGISTER_PROFESSIONAL: '/auth/register_professional.php',
+  REGISTER_PROFESSIONAL: '/auth/signup.php',
   ADMIN_LOGIN: '/auth/admin_login.php',
   DELETE_ACCOUNT: '/auth/delete_account.php',
 

@@ -651,8 +651,6 @@ class _WelcomeDashboardView extends StatelessWidget {
             child: _WhyCard(data: card),
           ),
         ),
-        const SizedBox(height: AppSpacing.xl),
-        const _TrustPanel(),
       ],
     );
   }
@@ -1032,6 +1030,39 @@ String _pendingPaymentDescription(ItrPersonalDetailModel? focus, String fy) {
   return 'Complete payment for FY $fy to unlock live tracking and expert processing.';
 }
 
+class _WorkspaceStageBadge extends StatelessWidget {
+  final String label;
+
+  const _WorkspaceStageBadge({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.authMint.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Text(
+        label,
+        maxLines: 2,
+        textAlign: TextAlign.center,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: AppColors.authMint,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+}
+
 class _WorkspaceHeroCard extends StatelessWidget {
   final String title;
   final String description;
@@ -1073,28 +1104,6 @@ class _WorkspaceHeroCard extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Positioned(
-            top: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.authMint.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-              ),
-              child: Text(
-                stageLabel,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: AppColors.authMint,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                ),
-              ),
-            ),
-          ),
           Positioned.fill(
             child: Align(
               alignment: Alignment.centerRight,
@@ -1111,14 +1120,23 @@ class _WorkspaceHeroCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  color: AppColors.authHeading,
-                  fontSize: 34,
-                  height: 1.08,
-                  fontWeight: FontWeight.w800,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        color: AppColors.authHeading,
+                        fontSize: 34,
+                        height: 1.08,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  _WorkspaceStageBadge(label: stageLabel),
+                ],
               ),
               const SizedBox(height: AppSpacing.lg),
               ConstrainedBox(
@@ -1980,69 +1998,6 @@ class _WhyCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _TrustPanel extends StatelessWidget {
-  const _TrustPanel();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      children: [
-        Text(
-          'Trusted by users filing with confidence',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: AppColors.authMuted,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-            vertical: AppSpacing.xl,
-            horizontal: AppSpacing.md,
-          ),
-          decoration: BoxDecoration(
-            color: const Color(0x08FFFFFF),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          ),
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            spacing: AppSpacing.lg,
-            runSpacing: AppSpacing.md,
-            children: const [
-              _TrustWordmark(label: 'FINANCE_CO'),
-              _TrustWordmark(label: 'LEDGER'),
-              _TrustWordmark(label: 'STRATA'),
-              _TrustWordmark(label: 'AETHER'),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _TrustWordmark extends StatelessWidget {
-  final String label;
-
-  const _TrustWordmark({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Text(
-      label,
-      style: theme.textTheme.titleMedium?.copyWith(
-        color: AppColors.authMutedSoft,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.6,
       ),
     );
   }
