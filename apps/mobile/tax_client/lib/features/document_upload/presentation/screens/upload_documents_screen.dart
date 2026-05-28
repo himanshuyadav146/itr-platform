@@ -18,7 +18,9 @@ import 'package:tax_client/features/packages/presentation/providers/package_prov
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_provider.dart';
 
 class UploadDocumentsScreen extends ConsumerStatefulWidget {
-  const UploadDocumentsScreen({super.key});
+  final bool fromStatus;
+
+  const UploadDocumentsScreen({super.key, this.fromStatus = false});
 
   @override
   ConsumerState<UploadDocumentsScreen> createState() =>
@@ -157,6 +159,10 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
       } else if (next is DocumentsSaveSuccess) {
         ErrorHandler.showSuccess(context, next.message);
         if (context.mounted) {
+          if (widget.fromStatus && context.canPop()) {
+            context.pop();
+            return;
+          }
           final packageId = ref.read(selectedPackageProvider)?.id ?? '1';
           context.push('/payment?packageId=$packageId');
         }

@@ -221,7 +221,16 @@ class _StatusUpdateRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isResolved = update.status == 'resolved';
+    final status = (update.status ?? '').trim().toLowerCase();
+    final isResolved =
+        (update.resolvedAt ?? '').trim().isNotEmpty ||
+        status == 'resolved' ||
+        status == 'closed' ||
+        status == 'submitted' ||
+        status == 'reverification' ||
+        status == 'under_review';
+    final shouldShowUploadAction =
+        !isResolved && onActionTap != null && _isDocumentIssue(update.message);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -261,15 +270,25 @@ class _StatusUpdateRow extends StatelessWidget {
                 ),
               ),
             ),
-            // Only show action button for pending items
-            if (!isResolved) ...[
+            // Pending document issue => show upload CTA.
+            if (shouldShowUploadAction) ...[
               const SizedBox(width: 8),
               _ActionButton(onTap: onActionTap),
+            ] else if (isResolved) ...[
+              const SizedBox(width: 8),
+              const _ReverificationBadge(),
             ],
           ],
         ),
       ),
     );
+  }
+
+  bool _isDocumentIssue(String? message) {
+    final text = (message ?? '').toLowerCase();
+    return text.contains('document') ||
+        text.contains('upload') ||
+        text.contains('file');
   }
 }
 
@@ -308,6 +327,37 @@ class _ActionButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ReverificationBadge extends StatelessWidget {
+  const _ReverificationBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.autorenew_rounded, size: 13, color: Colors.blue),
+          SizedBox(width: 4),
+          Text(
+            'Reverification',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.blue,
+            ),
+          ),
+        ],
       ),
     );
   }

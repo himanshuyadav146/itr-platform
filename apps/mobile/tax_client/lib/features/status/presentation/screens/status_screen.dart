@@ -43,7 +43,7 @@ class _StatusScreenState extends ConsumerState<StatusScreen>
   @override
   void initState() {
     super.initState();
-    if (_statusOrderId.isNotEmpty) {
+    if (_statusOrderId.isNotEmpty || _statusItrId.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadStatus();
       });
@@ -99,7 +99,11 @@ class _StatusScreenState extends ConsumerState<StatusScreen>
     if (isPersonalInfo) {
       context.push('/personal_info', extra: widget.itrData);
     } else {
-      context.push('/document_upload');
+      context.push('/document_upload?from=status').then((_) {
+        if (mounted) {
+          _loadStatus();
+        }
+      });
     }
   }
 

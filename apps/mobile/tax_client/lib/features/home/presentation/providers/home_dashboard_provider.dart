@@ -190,13 +190,23 @@ OrderModel? _findOrderForItr(
   List<OrderModel> orders,
   ItrPersonalDetailModel itr,
 ) {
-  final itrId = itr.itrId;
-  if (itrId == null || itrId.isEmpty) {
-    return null;
+  final itrId = itr.itrId?.trim();
+  if (itrId != null && itrId.isNotEmpty) {
+    for (final order in orders) {
+      if (order.itrId?.toString() == itrId) {
+        return order;
+      }
+    }
   }
 
+  // Fallback when itrId is absent in getItrByUser response:
+  // use PAN + Financial Year to find the matching paid order.
+  final pan = itr.panNumber.trim().toUpperCase();
+  final fy = itr.financialYear.trim().toLowerCase();
   for (final order in orders) {
-    if (order.itrId?.toString() == itrId) {
+    final orderPan = (order.panNumber ?? '').trim().toUpperCase();
+    final orderFy = (order.financialYear ?? '').trim().toLowerCase();
+    if (orderPan.isNotEmpty && orderPan == pan && orderFy == fy) {
       return order;
     }
   }

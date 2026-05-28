@@ -31,9 +31,7 @@ class AppRouter {
       // initialLocation: '/document_upload',
       errorBuilder: (context, state) {
         // If route not found, redirect to home or login
-        return initialLocation == '/login' 
-            ? LoginScreen() 
-            : const HomeScreen();
+        return initialLocation == '/login' ? LoginScreen() : const HomeScreen();
       },
       routes: <GoRoute>[
         GoRoute(
@@ -106,14 +104,18 @@ class AppRouter {
         GoRoute(
           path: '/document_upload',
           builder: (BuildContext context, GoRouterState state) {
-            return UploadDocumentsScreen();
+            final fromStatus =
+                state.uri.queryParameters['from']?.toLowerCase() == 'status';
+            return UploadDocumentsScreen(fromStatus: fromStatus);
           },
         ),
         GoRoute(
           path: '/payment',
           builder: (BuildContext context, GoRouterState state) {
             final packageIdStr = state.uri.queryParameters['packageId'];
-            final packageId = packageIdStr != null ? int.tryParse(packageIdStr) ?? 1 : 1;
+            final packageId = packageIdStr != null
+                ? int.tryParse(packageIdStr) ?? 1
+                : 1;
             return PaymentScreen(packageId: packageId);
           },
         ),
@@ -131,7 +133,7 @@ class AppRouter {
                 orderId = map['orderId'] as String?;
               }
             }
-            
+
             return StatusScreen(itrData: itrData, orderId: orderId);
           },
         ),

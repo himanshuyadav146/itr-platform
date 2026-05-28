@@ -72,8 +72,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final packagesState = ref.read(packagesProvider);
       if (packagesState.hasValue && packagesState.value != null) {
         try {
-          selectedPackage =
-              packagesState.value!.firstWhere((pkg) => pkg.id == "7");
+          selectedPackage = packagesState.value!.firstWhere(
+            (pkg) => pkg.id == "7",
+          );
         } catch (_) {
           selectedPackage = null;
         }
@@ -96,9 +97,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
     await ref.read(personalInfoViewModelProvider.notifier).getItrByUser(userId);
@@ -138,7 +137,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _openStatus(BuildContext context, HomeDashboardSnapshot snapshot) {
     final focusItr = snapshot.focusItr;
     if (focusItr != null) {
-      context.push('/status', extra: focusItr);
+      final focusOrder = snapshot.focusOrder;
+      final orderId = (focusOrder?.orderId ?? '').trim();
+      final itrId = (focusItr.itrId ?? '').trim().isNotEmpty
+          ? focusItr.itrId!.trim()
+          : (focusOrder?.itrId?.toString() ?? '').trim().isNotEmpty
+          ? focusOrder!.itrId!.toString()
+          : focusItr.id.trim();
+      final statusItrData = ItrPersonalDetailModel(
+        // Keep orderId separate from ITR id; never send numeric ITR row id as orderId.
+        id: orderId,
+        itrId: itrId,
+        userId: focusItr.userId,
+        panNumber: focusItr.panNumber,
+        firstName: focusItr.firstName,
+        middleName: focusItr.middleName,
+        lastName: focusItr.lastName,
+        email: focusItr.email,
+        mobileNumber: focusItr.mobileNumber,
+        aadharCardNumber: focusItr.aadharCardNumber,
+        gender: focusItr.gender,
+        dateOfBirth: focusItr.dateOfBirth,
+        financialYear: focusItr.financialYear,
+        address: focusItr.address,
+        country: focusItr.country,
+        isActive: focusItr.isActive,
+        createdAt: focusItr.createdAt,
+        createdBy: focusItr.createdBy,
+        updatedAt: focusItr.updatedAt,
+        updatedBy: focusItr.updatedBy,
+        documents: focusItr.documents,
+        documentCount: focusItr.documentCount,
+        packageId: focusItr.packageId,
+        packageName: focusItr.packageName,
+        paymentStatus: focusItr.paymentStatus,
+        itrStatus: focusItr.itrStatus,
+        statusDisplayText: focusItr.statusDisplayText,
+      );
+      context.push('/status', extra: statusItrData);
       return;
     }
 
@@ -622,8 +658,9 @@ class _WelcomeDashboardView extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         LayoutBuilder(
           builder: (context, constraints) {
-            final cardWidth =
-                ResponsiveLayout.horizontalCardWidth(constraints.maxWidth);
+            final cardWidth = ResponsiveLayout.horizontalCardWidth(
+              constraints.maxWidth,
+            );
             return SizedBox(
               height: 248,
               child: ListView.separated(
@@ -1203,10 +1240,7 @@ class _SectionHeader extends StatelessWidget {
   final String title;
   final String trailing;
 
-  const _SectionHeader({
-    required this.title,
-    required this.trailing,
-  });
+  const _SectionHeader({required this.title, required this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -1248,9 +1282,9 @@ class _WorkspaceOverviewCard extends StatelessWidget {
     final theme = Theme.of(context);
     final statusInfo = snapshot.activeStatus?.itrStatus;
     final steps = statusInfo?.steps ?? const <ItrStatusStepModel>[];
-    final currentStepNumber =
-        (statusInfo?.currentStep ?? 1).clamp(1, steps.isEmpty ? 1 : steps.length)
-            .toInt();
+    final currentStepNumber = (statusInfo?.currentStep ?? 1)
+        .clamp(1, steps.isEmpty ? 1 : steps.length)
+        .toInt();
     final currentIndex = steps.isEmpty ? 0 : currentStepNumber - 1;
     final activeStep = steps.isEmpty ? null : steps[currentIndex];
     final progress = _workspaceProgress(snapshot, selectedPackage);
@@ -1261,14 +1295,16 @@ class _WorkspaceOverviewCard extends StatelessWidget {
     final stageDetail = activeStep?.notes?.trim().isNotEmpty == true
         ? activeStep!.notes!
         : _statusDescription(snapshot, selectedPackage);
-    final packageName = selectedPackage?.name ??
+    final packageName =
+        selectedPackage?.name ??
         snapshot.focusItr?.packageName ??
         snapshot.focusOrder?.packageName ??
         'Not selected';
     final paymentStatus =
         snapshot.focusItr?.paymentStatus ?? snapshot.focusOrder?.status;
     final assignmentName =
-        snapshot.activeStatus?.assignmentStatus?.professionalName ?? 'Assigning soon';
+        snapshot.activeStatus?.assignmentStatus?.professionalName ??
+        'Assigning soon';
     final orderId =
         snapshot.focusOrder?.orderId ?? snapshot.activeStatus?.orderId ?? '—';
 
@@ -1365,8 +1401,9 @@ class _WorkspaceOverviewCard extends StatelessWidget {
               value: progress,
               minHeight: 8,
               backgroundColor: AppColors.surfaceVariantDark,
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(AppColors.authMint),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.authMint,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -1447,10 +1484,10 @@ class _TrackingStepPill extends StatelessWidget {
     final accent = hasConcern
         ? AppColors.authAmber
         : isCurrent
-            ? AppColors.authMint
-            : isCompleted
-                ? AppColors.authHeading
-                : AppColors.authMutedSoft;
+        ? AppColors.authMint
+        : isCompleted
+        ? AppColors.authHeading
+        : AppColors.authMutedSoft;
 
     return Container(
       constraints: const BoxConstraints(minWidth: 110),
@@ -1472,8 +1509,8 @@ class _TrackingStepPill extends StatelessWidget {
             isCompleted
                 ? Icons.check_circle_rounded
                 : isCurrent
-                    ? Icons.radio_button_checked_rounded
-                    : Icons.radio_button_unchecked_rounded,
+                ? Icons.radio_button_checked_rounded
+                : Icons.radio_button_unchecked_rounded,
             size: 16,
             color: accent,
           ),
@@ -1566,10 +1603,7 @@ class _SectionHeadingBlock extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _SectionHeadingBlock({
-    required this.title,
-    required this.subtitle,
-  });
+  const _SectionHeadingBlock({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -1666,7 +1700,8 @@ class _CriticalActionCard extends StatelessWidget {
                         height: 1.45,
                       ),
                     ),
-                    if (requestedBy != null && requestedBy!.trim().isNotEmpty) ...[
+                    if (requestedBy != null &&
+                        requestedBy!.trim().isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.sm),
                       Text(
                         'Requested by: $requestedBy',
@@ -1791,59 +1826,53 @@ class _SetupProgressCard extends StatelessWidget {
       border: Border.all(color: AppColors.borderOnDark),
       padding: const EdgeInsets.all(24),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceVariantDark,
-                borderRadius: BorderRadius.circular(AppSpacing.sm),
-              ),
-              child: Icon(
-                data.icon,
-                color: data.accent,
-                size: 18,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariantDark,
+              borderRadius: BorderRadius.circular(AppSpacing.sm),
+            ),
+            child: Icon(data.icon, color: data.accent, size: 18),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            data.title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: AppColors.authHeading,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              data.description,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.authMuted,
+                height: 1.45,
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              data.title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: AppColors.authHeading,
-                fontWeight: FontWeight.w700,
-              ),
+          ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+            child: LinearProgressIndicator(
+              minHeight: 4,
+              value: data.progress,
+              backgroundColor: AppColors.surfaceVariantDark,
+              valueColor: AlwaysStoppedAnimation<Color>(data.accent),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                data.description,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.authMuted,
-                  height: 1.45,
-                ),
-              ),
-            ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-              child: LinearProgressIndicator(
-                minHeight: 4,
-                value: data.progress,
-                backgroundColor: AppColors.surfaceVariantDark,
-                valueColor: AlwaysStoppedAnimation<Color>(data.accent),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              data.actionLabel,
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: data.accent,
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            data.actionLabel,
+            style: theme.textTheme.labelLarge?.copyWith(color: data.accent),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1907,9 +1936,7 @@ class _DashboardErrorState extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.authAmber.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-        border: Border.all(
-          color: AppColors.authAmber.withValues(alpha: 0.24),
-        ),
+        border: Border.all(color: AppColors.authAmber.withValues(alpha: 0.24)),
       ),
       child: Column(
         children: [
@@ -1968,19 +1995,13 @@ class _WhyCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(32, 36, 32, 32),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-        border: Border(
-          top: BorderSide(color: data.accent, width: 4),
-        ),
+        border: Border(top: BorderSide(color: data.accent, width: 4)),
         color: const Color(0x08FFFFFF),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            data.icon,
-            color: data.accent,
-            size: 28,
-          ),
+          Icon(data.icon, color: data.accent, size: 28),
           const SizedBox(height: AppSpacing.md),
           Text(
             data.title,
