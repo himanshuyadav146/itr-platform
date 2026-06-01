@@ -9,6 +9,7 @@ import 'package:tax_client/core/common/widgets/primary_button.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/config/strings/app_strings.dart';
+import 'package:tax_client/core/utils/error_handler.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_provider.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_state.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -54,7 +55,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
   void _validateForm() {
     setState(() {
-      _isFormValid = _nameController.text.trim().isNotEmpty &&
+      _isFormValid =
+          _nameController.text.trim().isNotEmpty &&
           _mobileController.text.trim().isNotEmpty &&
           _emailController.text.trim().isNotEmpty &&
           _passwordController.text.trim().isNotEmpty &&
@@ -66,9 +68,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   Future<void> _launchUrl(String urlString) async {
     final uri = Uri.parse(urlString);
     if (!await launchUrl(uri) && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not launch $urlString')),
-      );
+      ErrorHandler.showError(context, 'Could not open link. Please try again.');
     }
   }
 
@@ -79,25 +79,22 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
     ref.listen<AuthState>(authViewModelProvider, (previous, next) {
       if (next is AuthRegistered) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.message)));
         context.go('/login');
       } else if (next is AuthAuthenticated) {
         context.go('/');
       } else if (next is AuthError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.message)));
       }
     });
 
     return AuthScaffold(
       maxContentWidth: 576,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isCompact = constraints.maxWidth < 360;
@@ -128,7 +125,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                         color: AppColors.authMuted,
                       ),
                     ),
-                    SizedBox(height: isCompact ? AppSpacing.xl : AppSpacing.xxxl),
+                    SizedBox(
+                      height: isCompact ? AppSpacing.xl : AppSpacing.xxxl,
+                    ),
                     AuthFieldGroup(
                       label: 'FULL NAME',
                       labelStyle: textTheme.labelSmall?.copyWith(
@@ -264,8 +263,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                 : Icons.visibility_off_outlined,
                             color: AppColors.authMuted,
                           ),
-                          onPressed: () =>
-                              setState(() => _isPasswordVisible = !_isPasswordVisible),
+                          onPressed: () => setState(
+                            () => _isPasswordVisible = !_isPasswordVisible,
+                          ),
                         ),
                       ),
                     ),
@@ -308,7 +308,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                             color: AppColors.authMuted,
                           ),
                           onPressed: () => setState(
-                            () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible,
+                            () => _isConfirmPasswordVisible =
+                                !_isConfirmPasswordVisible,
                           ),
                         ),
                       ),
@@ -333,7 +334,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               color: _isTermsAccepted
                                   ? AppColors.authMint.withValues(alpha: 0.18)
                                   : AppColors.authCheckboxFill,
-                              borderRadius: BorderRadius.circular(AppSpacing.sm),
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.sm,
+                              ),
                               border: Border.all(
                                 color: _isTermsAccepted
                                     ? AppColors.authMint
@@ -364,14 +367,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                       color: AppColors.authMint,
                                       fontWeight: FontWeight.w600,
                                       decoration: TextDecoration.underline,
-                                      decorationColor: AppColors.authMint.withValues(
-                                        alpha: 0.2,
-                                      ),
+                                      decorationColor: AppColors.authMint
+                                          .withValues(alpha: 0.2),
                                     ),
                                     recognizer: TapGestureRecognizer()
                                       ..onTap = () => _launchUrl(
-                                            'https://allindiaitr.in/terms-and-condition',
-                                          ),
+                                        'https://allindiaitr.in/terms-and-condition',
+                                      ),
                                   ),
                                   const TextSpan(text: ' and '),
                                   TextSpan(
@@ -380,14 +382,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                       color: AppColors.authMint,
                                       fontWeight: FontWeight.w600,
                                       decoration: TextDecoration.underline,
-                                      decorationColor: AppColors.authMint.withValues(
-                                        alpha: 0.2,
-                                      ),
+                                      decorationColor: AppColors.authMint
+                                          .withValues(alpha: 0.2),
                                     ),
                                     recognizer: TapGestureRecognizer()
                                       ..onTap = () => _launchUrl(
-                                            'https://allindiaitr.in/privacy-policy',
-                                          ),
+                                        'https://allindiaitr.in/privacy-policy',
+                                      ),
                                   ),
                                 ],
                               ),
@@ -432,7 +433,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                 );
                                 return;
                               }
-                              ref.read(authViewModelProvider.notifier).register(
+                              ref
+                                  .read(authViewModelProvider.notifier)
+                                  .register(
                                     _nameController.text.trim(),
                                     _mobileController.text.trim(),
                                     _emailController.text.trim(),

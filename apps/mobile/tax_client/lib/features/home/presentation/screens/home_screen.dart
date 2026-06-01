@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:tax_client/core/common/enums/journey_type.dart';
 import 'package:tax_client/core/common/widgets/bottom_nav_bar.dart';
 import 'package:tax_client/core/common/widgets/core_scaffold.dart';
@@ -16,6 +15,7 @@ import 'package:tax_client/core/constant/api_constants.dart';
 import 'package:tax_client/core/config/app_router.dart';
 import 'package:tax_client/core/network/token_storage.dart';
 import 'package:tax_client/core/utils/error_handler.dart';
+import 'package:tax_client/core/utils/external_link_launcher.dart';
 import 'package:tax_client/features/home/domain/dashboard_mode.dart';
 import 'package:tax_client/features/home/presentation/providers/home_dashboard_provider.dart';
 import 'package:tax_client/features/packages/data/models/package_model.dart';
@@ -157,8 +157,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
   }
 
   Future<void> _openContactUs() async {
-    final uri = Uri.parse(ApiConstants.baseUrl + ApiConstants.itrContactUS);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await ExternalLinkLauncher.openPage(context, ApiConstants.itrContactUS);
   }
 
   void _openOrders(BuildContext context) {

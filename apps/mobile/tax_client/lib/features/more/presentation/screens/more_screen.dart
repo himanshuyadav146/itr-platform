@@ -13,10 +13,10 @@ import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/network/token_storage.dart';
 import 'package:tax_client/core/utils/error_handler.dart';
+import 'package:tax_client/core/utils/external_link_launcher.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_provider.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_state.dart';
 import 'package:tax_client/features/auth/presentation/providers/user_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constant/api_constants.dart';
 
@@ -30,21 +30,6 @@ class MoreScreen extends ConsumerWidget {
   Future<void> _shareApp() async {
     final url = Platform.isIOS ? appStoreUrl : playStoreUrl;
     await Share.share('Try Tax Client: $url');
-  }
-
-  Future<void> _openPrivacyPolicy() async {
-    final uri = Uri.parse(ApiConstants.baseUrl + ApiConstants.itrPrivacyPolicy);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  Future<void> _openContactUs() async {
-    final uri = Uri.parse(ApiConstants.baseUrl + ApiConstants.itrContactUS);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  Future<void> _openAboutUS() async {
-    final uri = Uri.parse(ApiConstants.baseUrl + ApiConstants.itrAboutUS);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
@@ -249,7 +234,7 @@ class MoreScreen extends ConsumerWidget {
     final userAsync = ref.watch(userProvider);
 
     ref.listen<AuthState>(authViewModelProvider, (previous, next) {
-      if (next is AuthError) {
+      if (next is AuthError && previous is AuthLoading) {
         ErrorHandler.showError(context, next.message);
       } else if (next is AuthDeleteSuccess) {
         _showDeleteSuccessBottomSheet(context, ref, next.message);
@@ -287,15 +272,15 @@ class MoreScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xl),
           userAsync.when(
             data: (user) => _MoreProfileCard(
-              name:
-                  (user?.name != null && user!.name.trim().isNotEmpty)
-                      ? user.name
-                      : 'Guest User',
+              name: (user?.name != null && user!.name.trim().isNotEmpty)
+                  ? user.name
+                  : 'Guest User',
               email: user?.email ?? '',
               mobile: user?.mobile ?? '',
             ),
             loading: () => const _MoreLoadingCard(),
-            error: (err, _) => _MoreErrorCard(message: 'Error loading user: $err'),
+            error: (err, _) =>
+                _MoreErrorCard(message: 'Error loading user: $err'),
           ),
           const SizedBox(height: AppSpacing.xl),
           _MoreSectionTitle(
@@ -313,19 +298,26 @@ class MoreScreen extends ConsumerWidget {
             icon: Icons.info_outline_rounded,
             label: AppStrings.aboutUs,
             subtitle: 'Learn more about the ITR platform and team.',
-            onTap: _openAboutUS,
+            onTap: () =>
+                ExternalLinkLauncher.openPage(context, ApiConstants.itrAboutUS),
           ),
           _MoreTile(
             icon: Icons.privacy_tip_outlined,
             label: AppStrings.privacyPolicy,
             subtitle: 'Read how your information is protected.',
-            onTap: _openPrivacyPolicy,
+            onTap: () => ExternalLinkLauncher.openPage(
+              context,
+              ApiConstants.itrPrivacyPolicy,
+            ),
           ),
           _MoreTile(
             icon: Icons.support_agent_rounded,
             label: AppStrings.contactSupport,
             subtitle: 'Reach the team if you need help with filing.',
-            onTap: _openContactUs,
+            onTap: () => ExternalLinkLauncher.openPage(
+              context,
+              ApiConstants.itrContactUS,
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           _MoreSectionTitle(
@@ -347,6 +339,7 @@ class MoreScreen extends ConsumerWidget {
             danger: true,
             onTap: () => _logout(context, ref),
           ),
+          const SizedBox(height: 88),
         ],
       ),
     );
@@ -545,10 +538,7 @@ class _MoreSectionTitle extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _MoreSectionTitle({
-    required this.title,
-    required this.subtitle,
-  });
+  const _MoreSectionTitle({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
