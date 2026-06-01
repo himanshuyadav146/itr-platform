@@ -22,12 +22,15 @@ import '../../features/splash/presentation/screens/splash_screen.dart';
 
 class AppRouter {
   static GoRouter? _router;
+  static final RouteObserver<ModalRoute<void>> routeObserver =
+      RouteObserver<ModalRoute<void>>();
 
   static GoRouter? get router => _router;
 
   static GoRouter buildRouter({required String initialLocation}) {
     _router = GoRouter(
       initialLocation: initialLocation,
+      observers: [routeObserver],
       // initialLocation: '/document_upload',
       errorBuilder: (context, state) {
         // If route not found, redirect to home or login

@@ -13,6 +13,7 @@ import 'package:tax_client/core/config/strings/app_strings.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/constant/api_constants.dart';
+import 'package:tax_client/core/config/app_router.dart';
 import 'package:tax_client/core/network/token_storage.dart';
 import 'package:tax_client/core/utils/error_handler.dart';
 import 'package:tax_client/features/home/domain/dashboard_mode.dart';
@@ -40,14 +41,48 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
+  bool _isRouteAwareSubscribed = false;
+
+  void _refreshDashboardData() {
+    ref.invalidate(homeDashboardSnapshotProvider);
+    ref.read(packagesProvider.notifier).getPackages();
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(homeDashboardSnapshotProvider);
-      ref.read(packagesProvider.notifier).getPackages();
+      _refreshDashboardData();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (!_isRouteAwareSubscribed && route is PageRoute) {
+      AppRouter.routeObserver.subscribe(this, route);
+      _isRouteAwareSubscribed = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_isRouteAwareSubscribed) {
+      AppRouter.routeObserver.unsubscribe(this);
+    }
+    super.dispose();
+  }
+
+  @override
+  void didPush() {
+    _refreshDashboardData();
+  }
+
+  @override
+  void didPopNext() {
+    _refreshDashboardData();
   }
 
   Future<void> _handleFileItr(
@@ -744,9 +779,7 @@ class _ActiveDashboardView extends StatelessWidget {
           const SizedBox(height: AppSpacing.xxl),
           _SectionHeader(
             title: 'Live Tracking',
-            trailing: snapshot.activeStatus?.itrStatus?.overallStatus != null
-                ? _toCaps(snapshot.activeStatus!.itrStatus!.overallStatus!)
-                : 'IN PROGRESS',
+            trailing: _liveTrackingHeaderLabel(snapshot),
           ),
           const SizedBox(height: AppSpacing.lg),
           _WorkspaceOverviewCard(
@@ -1302,9 +1335,7 @@ class _WorkspaceOverviewCard extends StatelessWidget {
         'Not selected';
     final paymentStatus =
         snapshot.focusItr?.paymentStatus ?? snapshot.focusOrder?.status;
-    final assignmentName =
-        snapshot.activeStatus?.assignmentStatus?.professionalName ??
-        'Assigning soon';
+    final assignmentName = _expertSummaryLabel(snapshot);
     final orderId =
         snapshot.focusOrder?.orderId ?? snapshot.activeStatus?.orderId ?? '—';
 
@@ -1384,9 +1415,7 @@ class _WorkspaceOverviewCard extends StatelessWidget {
                 ),
               ),
               Text(
-                snapshot.activeStatus?.itrStatus?.overallStatus != null
-                    ? _toCaps(snapshot.activeStatus!.itrStatus!.overallStatus!)
-                    : 'In Progress',
+                _workspaceStatusBadgeLabel(snapshot),
                 style: theme.textTheme.labelLarge?.copyWith(
                   color: AppColors.authMint,
                   fontWeight: FontWeight.w700,
@@ -2266,4 +2295,67 @@ String _toCaps(String value) {
         return '${lower[0].toUpperCase()}${lower.substring(1)}';
       })
       .join(' ');
+}
+
+bool _isWorkflowCompleted(HomeDashboardSnapshot snapshot) {
+  final status = snapshot.activeStatus?.itrStatus;
+  if (status == null) {
+    return false;
+  }
+
+  if ((status.overallStatus ?? '').trim().toLowerCase() == 'completed') {
+    return true;
+  }
+
+  final steps = status.steps ?? const <ItrStatusStepModel>[];
+  if (steps.isNotEmpty && steps.every((step) => step.isCompleted == true)) {
+    return true;
+  }
+
+  final currentStep = status.currentStep ?? 0;
+  final totalSteps = status.totalSteps ?? 0;
+  if (totalSteps > 0 && currentStep >= totalSteps) {
+    return true;
+  }
+
+  return false;
+}
+
+String _liveTrackingHeaderLabel(HomeDashboardSnapshot snapshot) {
+  if (_isWorkflowCompleted(snapshot)) {
+    return 'ITR FILED';
+  }
+
+  final overall = snapshot.activeStatus?.itrStatus?.overallStatus;
+  if (overall != null && overall.trim().isNotEmpty) {
+    return _toCaps(overall);
+  }
+
+  return 'IN PROGRESS';
+}
+
+String _workspaceStatusBadgeLabel(HomeDashboardSnapshot snapshot) {
+  if (_isWorkflowCompleted(snapshot)) {
+    return 'ITR Filed';
+  }
+
+  final overall = snapshot.activeStatus?.itrStatus?.overallStatus;
+  if (overall != null && overall.trim().isNotEmpty) {
+    return _toCaps(overall);
+  }
+
+  return 'In Progress';
+}
+
+String _expertSummaryLabel(HomeDashboardSnapshot snapshot) {
+  final assigned = snapshot.activeStatus?.assignmentStatus?.professionalName;
+  if (assigned != null && assigned.trim().isNotEmpty) {
+    return assigned.trim();
+  }
+
+  if (_isWorkflowCompleted(snapshot)) {
+    return 'Expert Assigned';
+  }
+
+  return 'Assigning soon';
 }
