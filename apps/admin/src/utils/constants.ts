@@ -30,23 +30,26 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
 
 export const ITR_STATUS_COLORS: Record<string, string> = {
   PENDING: '#ff9800',
+  PAID: '#2196f3',
+  IN_PROGRESS: '#7b1fa2',
+  COMPLETED: '#4caf50',
+  // Legacy workflow edit labels
   ASSIGNED: '#2196f3',
   REQUIRED: '#f44336',
   INCORRECT: '#e91e63',
-  FILED: '#4caf50',
-  COMPLETED: '#4caf50',
-  PAID: '#f9a825',   // yellow - payment success
-  SUCCESS: '#4caf50', // green - ITR filed + acknowledgement generated
+  FILED: '#00897b',
+  SUCCESS: '#4caf50',
 };
 
 export const ITR_STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pending',
+  PAID: 'Paid',
+  IN_PROGRESS: 'In Progress',
+  COMPLETED: 'Completed',
   ASSIGNED: 'Assigned',
   REQUIRED: 'Required',
   INCORRECT: 'Incorrect',
   FILED: 'Filed',
-  COMPLETED: 'Completed',
-  PAID: 'Paid',
-  SUCCESS: 'Success',
+  SUCCESS: 'Completed',
 };
 
