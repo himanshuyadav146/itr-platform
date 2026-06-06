@@ -14,6 +14,7 @@ import 'package:tax_client/features/personal_info/presentation/screens/personal_
 import 'package:tax_client/features/personal_info/presentation/screens/itr_list_screen.dart';
 import 'package:tax_client/features/personal_info/data/models/itr_personal_detail_model.dart';
 import 'package:tax_client/features/payment/presentation/screens/payment_screen.dart';
+import 'package:tax_client/features/tax_calculator/presentation/screens/tax_calculator_screen.dart';
 
 import '../../features/document_upload/presentation/screens/upload_documents_screen.dart';
 import 'package:tax_client/features/status/presentation/screens/status_screen.dart';
@@ -21,18 +22,19 @@ import '../../features/splash/presentation/screens/splash_screen.dart';
 
 class AppRouter {
   static GoRouter? _router;
+  static final RouteObserver<ModalRoute<void>> routeObserver =
+      RouteObserver<ModalRoute<void>>();
 
   static GoRouter? get router => _router;
 
   static GoRouter buildRouter({required String initialLocation}) {
     _router = GoRouter(
       initialLocation: initialLocation,
+      observers: [routeObserver],
       // initialLocation: '/document_upload',
       errorBuilder: (context, state) {
         // If route not found, redirect to home or login
-        return initialLocation == '/login' 
-            ? LoginScreen() 
-            : const HomeScreen();
+        return initialLocation == '/login' ? LoginScreen() : const HomeScreen();
       },
       routes: <GoRoute>[
         GoRoute(
@@ -105,14 +107,18 @@ class AppRouter {
         GoRoute(
           path: '/document_upload',
           builder: (BuildContext context, GoRouterState state) {
-            return UploadDocumentsScreen();
+            final fromStatus =
+                state.uri.queryParameters['from']?.toLowerCase() == 'status';
+            return UploadDocumentsScreen(fromStatus: fromStatus);
           },
         ),
         GoRoute(
           path: '/payment',
           builder: (BuildContext context, GoRouterState state) {
             final packageIdStr = state.uri.queryParameters['packageId'];
-            final packageId = packageIdStr != null ? int.tryParse(packageIdStr) ?? 1 : 1;
+            final packageId = packageIdStr != null
+                ? int.tryParse(packageIdStr) ?? 1
+                : 1;
             return PaymentScreen(packageId: packageId);
           },
         ),
@@ -130,8 +136,14 @@ class AppRouter {
                 orderId = map['orderId'] as String?;
               }
             }
-            
+
             return StatusScreen(itrData: itrData, orderId: orderId);
+          },
+        ),
+        GoRoute(
+          path: '/tax_calculator',
+          builder: (BuildContext context, GoRouterState state) {
+            return const TaxCalculatorScreen();
           },
         ),
         GoRoute(

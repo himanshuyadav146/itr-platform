@@ -2,21 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tax_client/core/common/widgets/core_scaffold.dart';
+import 'package:tax_client/core/common/widgets/custom_card.dart';
 import 'package:tax_client/core/common/widgets/primary_button.dart';
 import 'package:tax_client/core/config/strings/app_strings.dart';
-import 'package:tax_client/core/payments/razorpay_service.dart';
+import 'package:tax_client/core/config/theme/app_colors.dart';
+import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/network/token_storage.dart';
+import 'package:tax_client/core/payments/razorpay_service.dart';
+import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
 import 'package:tax_client/features/payment/data/datasources/payment_remote_data_source.dart';
 import 'package:tax_client/features/payment/data/models/payment_info_data.dart';
 import 'package:tax_client/features/payment/data/models/payment_initiate_response.dart';
+import 'package:tax_client/features/payment/data/models/payment_summary_item.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   final int packageId;
-  
-  const PaymentScreen({
-    super.key,
-    this.packageId = 1,
-  });
+
+  const PaymentScreen({super.key, this.packageId = 1});
 
   @override
   ConsumerState<PaymentScreen> createState() => _PaymentScreenState();
@@ -24,7 +26,6 @@ class PaymentScreen extends ConsumerStatefulWidget {
 
 class _PaymentScreenState extends ConsumerState<PaymentScreen>
     with SingleTickerProviderStateMixin {
-  bool eVerification = true;
   PaymentInfoData? paymentInfo;
   bool isLoading = true;
   String? errorMessage;
@@ -53,9 +54,20 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     _controller.forward();
-    
-    // Fetch payment info
     _fetchPaymentInfo();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _fetchPaymentInfo() async {
@@ -68,24 +80,18 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       final dataSource = ref.read(paymentRemoteDataSourceProvider);
       final info = await dataSource.getPaymentInfo(widget.packageId);
 
-      if (mounted) {
-        setState(() {
-          paymentInfo = info;
-          isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        paymentInfo = info;
+        isLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-          errorMessage = e.toString();
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load payment information: ${e.toString()}'),
-          ),
-        );
-      }
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        errorMessage = e.toString();
+      });
+      _showMessage('Failed to load payment information: $e');
     }
   }
 
@@ -113,468 +119,763 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
         failureReason: failureReason,
         gatewayResponse: gatewayResponse,
       );
-      // Payment status has been recorded in the database via API
     } catch (e) {
-      // Log error but don't block user navigation
       debugPrint('Error verifying payment status: $e');
     }
+  }
+
+  Future<void> _startPayment() async {
+    final info = paymentInfo;
+    if (info == null) return;
+
+    final router = GoRouter.of(context);
+
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      final tokenStorage = ref.read(tokenStorageProvider);
+      final panNumber = await tokenStorage.getPanNumber();
+
+      if (panNumber == null || panNumber.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          isLoading = false;
+        });
+        _showMessage(
+          'PAN number not found. Please complete personal information first.',
+        );
+        return;
+      }
+
+      final dataSource = ref.read(paymentRemoteDataSourceProvider);
+      late final PaymentInitiateResponse initiateResponse;
+
+      try {
+        initiateResponse = await dataSource.initiatePayment(
+          packageId: widget.packageId,
+          panNumber: panNumber,
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          isLoading = false;
+        });
+        _showMessage('Failed to initiate payment: $e');
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+      });
+
+      RazorpayService.openCheckout(
+        paymentInfo: info,
+        initiateResponse: initiateResponse,
+        onSuccess: (response) async {
+          final paymentId = response['payment_id'] as String?;
+          final orderId = response['order_id'] as String?;
+          final signature = response['signature'] as String?;
+          final finalOrderId = orderId ?? initiateResponse.orderId;
+
+          final gatewayResponse = <String, dynamic>{
+            'razorpay_payment_id': paymentId,
+            'razorpay_order_id': finalOrderId,
+            if (signature != null) 'razorpay_signature': signature,
+          };
+
+          await _handlePaymentStatus(
+            orderId: finalOrderId,
+            paymentStatus: response['status'],
+            transactionId: paymentId,
+            gatewayResponse: gatewayResponse,
+          );
+
+          if (!mounted) return;
+          router.go('/status', extra: {'orderId': finalOrderId});
+        },
+        onError: (response) async {
+          final orderId = initiateResponse.orderId;
+          final paymentFailureMessage = response['message'] as String?;
+          final errorCode = response['code'] as String?;
+
+          final gatewayResponse = <String, dynamic>{
+            if (errorCode != null) 'error_code': errorCode,
+            if (paymentFailureMessage != null)
+              'error_message': paymentFailureMessage,
+          };
+
+          await _handlePaymentStatus(
+            orderId: orderId,
+            paymentStatus: 'failed',
+            failureReason: paymentFailureMessage ?? 'Payment failed',
+            gatewayResponse: gatewayResponse,
+          );
+
+          _showMessage(
+            paymentFailureMessage ?? 'Payment failed. Please try again.',
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+      });
+      _showMessage('Invalid payment information: $e');
+    }
+  }
+
+  PaymentSummaryItem? get _grandTotalItem {
+    final info = paymentInfo;
+    if (info == null) return null;
+
+    for (final item in info.paymentSummary) {
+      if (item.type == 'grand_total') {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  List<PaymentSummaryItem> get _regularSummaryItems {
+    final info = paymentInfo;
+    if (info == null) return const [];
+    return info.paymentSummary
+        .where((item) => item.type != 'grand_total')
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final selectedPackage = ref.watch(selectedPackageProvider);
+    final info = paymentInfo;
+    final grandTotal = _grandTotalItem;
+    final regularItems = _regularSummaryItems;
+    final packageLabel =
+        selectedPackage?.name ?? 'Package #${widget.packageId}';
 
     return CoreScaffold(
-      title: AppStrings.payment,
-      centered: false,
-      useScrollView: false,
-      padding: EdgeInsets.zero,
-      showBackButton: true,
+      includeAppBar: false,
+      backgroundColor: AppColors.authBackground,
+      useScrollView: true,
+      centered: true,
+      useResponsiveMaxWidth: true,
+      maxContentWidth: 560,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        120,
+      ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-        child: PrimaryButton(
-          text: AppStrings.payNow,
-          isLoading: isLoading,
-          onPressed: () async {
-            if (paymentInfo == null) return;
-            
-            try {
-              setState(() {
-                isLoading = true;
-              });
-              
-              // Step 1: Get PAN number from storage
-              final tokenStorage = ref.read(tokenStorageProvider);
-              final panNumber = await tokenStorage.getPanNumber();
-              
-              if (panNumber == null || panNumber.isEmpty) {
-                if (!mounted) return;
-                setState(() {
-                  isLoading = false;
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('PAN number not found. Please complete personal information first.'),
-                  ),
-                );
-                return;
-              }
-              
-              // Step 2: Initiate payment to get payment_id and order_id
-              final dataSource = ref.read(paymentRemoteDataSourceProvider);
-              PaymentInitiateResponse? initiateResponse;
-              
-              try {
-                initiateResponse = await dataSource.initiatePayment(
-                  packageId: widget.packageId,
-                  panNumber: panNumber,
-                );
-              } catch (e) {
-                if (!mounted) return;
-                setState(() {
-                  isLoading = false;
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to initiate payment: ${e.toString()}'),
-                  ),
-                );
-                return;
-              }
-              
-              if (!mounted) return;
-              setState(() {
-                isLoading = false;
-              });
-              
-              // Step 2: Open payment gateway with initiate payment response
-              RazorpayService.openCheckout(
-                paymentInfo: paymentInfo!,
-                initiateResponse: initiateResponse,
-                onSuccess: (response) async {
-                  // Extract payment_id and order_id from Razorpay response
-                  final paymentId = response['payment_id'] as String?;
-                  final orderId = response['order_id'] as String?;
-                  final signature = response['signature'] as String?;
-                  
-                  // Use order_id from initiate response (more reliable)
-                  final finalOrderId = orderId ?? initiateResponse?.orderId;
-                  
-                  // Build gateway response object
-                  final gatewayResponse = <String, dynamic>{
-                    'razorpay_payment_id': paymentId,
-                    'razorpay_order_id': finalOrderId,
-                    if (signature != null) 'razorpay_signature': signature,
-                  };
-                  
-                  // Call API to verify and record payment status
-                  await _handlePaymentStatus(
-                    orderId: finalOrderId,
-                    paymentStatus: response['status'],
-                    transactionId: paymentId,
-                    paymentMethod: 'card', // Default, can be enhanced based on Razorpay response
-                    gatewayResponse: gatewayResponse,
-                  );
-                  
-                  // Check mounted before using context
-                  if (!mounted) return;
-                  context.go('/status', extra: {'orderId': finalOrderId});
-                },
-                onError: (response) async {
-                  // Use order_id from initiate response
-                  final orderId = initiateResponse?.orderId;
-                  final errorMessage = response['message'] as String?;
-                  final errorCode = response['code'] as String?;
-                  
-                  // Build gateway response object for error
-                  final gatewayResponse = <String, dynamic>{
-                    if (errorCode != null) 'error_code': errorCode,
-                    if (errorMessage != null) 'error_message': errorMessage,
-                  };
-                  
-                  // Call API to verify and record payment failure
-                  await _handlePaymentStatus(
-                    orderId: orderId,
-                    paymentStatus: 'failed',
-                    failureReason: errorMessage ?? 'Payment failed',
-                    gatewayResponse: gatewayResponse,
-                  );
-                  
-                  // Check mounted before using context
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        errorMessage ?? 'Payment failed. Please try again.',
-                      ),
-                    ),
-                  );
-                },
-              );
-            } catch (e) {
-              // Handle any errors during payment initiation
-              if (!mounted) return;
-              setState(() {
-                isLoading = false;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Invalid payment information: ${e.toString()}'),
-                ),
-              );
-            }
-          },
+        child: SizedBox(
+          height: 56,
+          child: PrimaryButton(
+            text: 'PAY NOW',
+            isLoading: isLoading,
+            onPressed: info == null || errorMessage != null
+                ? null
+                : _startPayment,
+            borderRadius: AppSpacing.radiusPill,
+            foregroundColor: AppColors.authButtonText,
+            textStyle: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.4,
+            ),
+            gradient: const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [AppColors.authMint, AppColors.authMintDark],
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x334EDEA3),
+                blurRadius: 20,
+                spreadRadius: -6,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
         ),
       ),
       body: FadeTransition(
         opacity: _fade,
         child: SlideTransition(
           position: _slide,
-          child: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : errorMessage != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Error loading payment information',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: scheme.error,
+          child: Builder(
+            builder: (context) {
+              if (isLoading && info == null) {
+                return const _PaymentLoadingState();
+              }
+
+              if (errorMessage != null) {
+                return _PaymentErrorState(onRetry: _fetchPaymentInfo);
+              }
+
+              if (info == null) {
+                return const _PaymentEmptyState();
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _PaymentHeader(
+                    onBack: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/');
+                      }
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  _PaymentHeroCard(
+                    packageLabel: packageLabel,
+                    amountLabel:
+                        grandTotal?.displayValue ??
+                        regularItems.last.displayValue,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _PaymentSectionCard(
+                    title: 'Payer details',
+                    subtitle:
+                        'This information is attached to the order created for your filing.',
+                    child: Column(
+                      children: [
+                        _PaymentDetailRow(
+                          label: 'Name',
+                          value: info.orderDetails.name,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _PaymentDetailRow(
+                          label: 'Phone',
+                          value: info.orderDetails.phone,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _PaymentDetailRow(
+                          label: 'Email',
+                          value: info.orderDetails.email,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _PaymentSectionCard(
+                    title: 'Payment summary',
+                    subtitle:
+                        'Review the charges before continuing to the Razorpay checkout.',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (
+                          var index = 0;
+                          index < regularItems.length;
+                          index++
+                        ) ...[
+                          _PaymentSummaryRow(
+                            label: regularItems[index].displayTitle,
+                            value: regularItems[index].displayValue,
+                            highlight: regularItems[index].type == 'subtotal',
+                          ),
+                          if (index != regularItems.length - 1)
+                            const SizedBox(height: AppSpacing.sm),
+                        ],
+                        if (grandTotal != null) ...[
+                          const SizedBox(height: AppSpacing.lg),
+                          Container(
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            decoration: BoxDecoration(
+                              color: AppColors.authMint.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusLg,
+                              ),
+                              border: Border.all(
+                                color: AppColors.authMint.withValues(
+                                  alpha: 0.18,
+                                ),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  AppStrings.grandTotal,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: AppColors.authHeading,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  grandTotal.displayValue,
+                                  style: theme.textTheme.headlineSmall
+                                      ?.copyWith(
+                                        color: AppColors.authMint,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _fetchPaymentInfo,
-                            child: const Text('Retry'),
-                          ),
                         ],
-                      ),
-                    )
-                  : paymentInfo == null
-                      ? const Center(child: Text('No payment information available'))
-                      : SingleChildScrollView(
-                          padding: const EdgeInsets.all(18),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // User Details Section
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(18),
-                                  color: scheme.surface,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.06),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                  border: Border.all(color: scheme.outlineVariant),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'User Details',
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 18),
-                                    _buildUserDetailRow('Name', paymentInfo!.orderDetails.name),
-                                    const SizedBox(height: 12),
-                                    _buildUserDetailRow('Phone', paymentInfo!.orderDetails.phone),
-                                    const SizedBox(height: 12),
-                                    _buildUserDetailRow('Email', paymentInfo!.orderDetails.email),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              // Main card
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(18),
-                                  color: scheme.surface,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.06),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                  border: Border.all(color: scheme.outlineVariant),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      AppStrings.paymentSummary,
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 18),
-                                    ..._buildPaymentSummaryItems(theme, scheme),
-
-                                    const SizedBox(height: 22),
-
-                                    // Text(
-                                    //   AppStrings.optionalServices,
-                                    //   style: theme.textTheme.titleMedium?.copyWith(
-                                    //     fontWeight: FontWeight.w700,
-                                    //   ),
-                                    // ),
-
-                                    // const SizedBox(height: 10),
-                                    //
-                                    // GestureDetector(
-                                    //   onTap: () {
-                                    //     setState(() {
-                                    //       eVerification = !eVerification;
-                                    //     });
-                                    //   },
-                                    //   child: AnimatedContainer(
-                                    //     duration: const Duration(milliseconds: 250),
-                                    //     padding: const EdgeInsets.symmetric(
-                                    //       horizontal: 14,
-                                    //       vertical: 12,
-                                    //     ),
-                                    //     decoration: BoxDecoration(
-                                    //       borderRadius: BorderRadius.circular(12),
-                                    //       color: eVerification
-                                    //           ? scheme.primary.withOpacity(0.10)
-                                    //           : scheme.surfaceVariant.withOpacity(0.3),
-                                    //       border: Border.all(
-                                    //         color: eVerification
-                                    //             ? scheme.primary
-                                    //             : scheme.outlineVariant,
-                                    //       ),
-                                    //     ),
-                                    //     child: Row(
-                                    //       children: [
-                                    //         AnimatedSwitcher(
-                                    //           duration: const Duration(milliseconds: 250),
-                                    //           child: eVerification
-                                    //               ? Icon(
-                                    //                   Icons.check_circle_rounded,
-                                    //                   key: const ValueKey(1),
-                                    //                   color: scheme.primary,
-                                    //                 )
-                                    //               : Icon(
-                                    //                   Icons.circle_outlined,
-                                    //                   key: const ValueKey(2),
-                                    //                   color: scheme.onSurface,
-                                    //                 ),
-                                    //         ),
-                                    //         const SizedBox(width: 12),
-                                    //         Text(
-                                    //           AppStrings.eVerificationFeeFull,
-                                    //           style: theme.textTheme.bodyLarge,
-                                    //         ),
-                                    //       ],
-                                    //     ),
-                                    //   ),
-                                    // ),
-                                    //
-                                    // const SizedBox(height: 25),
-
-                                    // Text(
-                                    //   AppStrings.applyCoupon,
-                                    //   style: theme.textTheme.titleMedium?.copyWith(
-                                    //     fontWeight: FontWeight.w700,
-                                    //   ),
-                                    // ),
-                                    //
-                                    // const SizedBox(height: 12),
-                                    //
-                                    // Row(
-                                    //   children: [
-                                    //     Expanded(
-                                    //       child: Container(
-                                    //         padding: const EdgeInsets.symmetric(
-                                    //           horizontal: 14,
-                                    //         ),
-                                    //         decoration: BoxDecoration(
-                                    //           borderRadius: BorderRadius.circular(12),
-                                    //           border: Border.all(
-                                    //             color: scheme.outlineVariant,
-                                    //           ),
-                                    //         ),
-                                    //         child: TextField(
-                                    //           decoration: InputDecoration(
-                                    //             hintText: AppStrings.couponHint,
-                                    //             border: InputBorder.none,
-                                    //           ),
-                                    //         ),
-                                    //       ),
-                                    //     ),
-                                    //     const SizedBox(width: 10),
-                                    //     Container(
-                                    //       padding: const EdgeInsets.symmetric(
-                                    //         horizontal: 22,
-                                    //         vertical: 14,
-                                    //       ),
-                                    //       decoration: BoxDecoration(
-                                    //         borderRadius: BorderRadius.circular(12),
-                                    //         color: scheme.primary.withOpacity(0.12),
-                                    //       ),
-                                    //       child: Text(
-                                    //         AppStrings.apply,
-                                    //         style: theme.textTheme.bodyLarge?.copyWith(
-                                    //           fontWeight: FontWeight.w600,
-                                    //           color: scheme.primary,
-                                    //         ),
-                                    //       ),
-                                    //     ),
-                                    //   ],
-                                    // ),
-
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      AppStrings.amountNote,
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: scheme.onSurface.withOpacity(0.6),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(height: 80),
-                            ],
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(
+                          AppStrings.amountNote,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.authMuted,
+                            height: 1.45,
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _PaymentSectionCard(
+                    title: 'Secure checkout',
+                    subtitle:
+                        'Your payment is processed through Razorpay and verified before the filing moves forward.',
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.authAmber.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusLg,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.lock_outline_rounded,
+                            color: AppColors.authAmber,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Text(
+                            'Your payment is processed securely through Razorpay, and we will automatically take you to order status after a successful payment.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: AppColors.authMuted,
+                              height: 1.45,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildUserDetailRow(String label, String value) {
+class _PaymentHeader extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _PaymentHeader({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
+        IconButton(
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          style: IconButton.styleFrom(
+            backgroundColor: AppColors.surfaceVariantDark,
+            foregroundColor: AppColors.authHeading,
           ),
         ),
+        const SizedBox(width: AppSpacing.md),
         Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppStrings.payment,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: AppColors.authHeading,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Review the amount and complete payment securely.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.authMuted,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
+}
 
-  List<Widget> _buildPaymentSummaryItems(ThemeData theme, ColorScheme scheme) {
-    if (paymentInfo == null) return [];
+class _PaymentHeroCard extends StatelessWidget {
+  final String packageLabel;
+  final String amountLabel;
 
-    final items = <Widget>[];
-    bool dividerAdded = false;
+  const _PaymentHeroCard({
+    required this.packageLabel,
+    required this.amountLabel,
+  });
 
-    for (int i = 0; i < paymentInfo!.paymentSummary.length; i++) {
-      final item = paymentInfo!.paymentSummary[i];
-      
-      // Add divider before subtotal items
-      if (item.type == 'subtotal' && !dividerAdded) {
-        items.add(Divider(color: scheme.outline.withOpacity(0.3)));
-        dividerAdded = true;
-      }
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
 
-      // Handle grand total separately with special styling
-      if (item.type == 'grand_total') {
-        items.add(const SizedBox(height: 12));
-        items.add(
+    return CustomCard(
+      backgroundColor: AppColors.authCardSurface,
+      border: Border.all(color: AppColors.authCardBorder),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
-            AppStrings.grandTotal,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        );
-        items.add(
-          Text(
-            item.displayValue,
+            'Ready to complete your filing payment',
             style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: scheme.primary,
+              color: AppColors.authHeading,
+              fontWeight: FontWeight.w800,
+              height: 1.15,
             ),
           ),
-        );
-      } else {
-        // Regular summary row
-        items.add(
-          summaryRow(item.displayTitle, item.displayValue),
-        );
-      }
-    }
-
-    return items;
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Confirm the selected plan and continue to the secure Razorpay checkout to activate the next step.',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: AppColors.authMuted,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _PaymentChip(
+                icon: Icons.inventory_2_outlined,
+                label: packageLabel,
+                accent: AppColors.authMint,
+              ),
+              _PaymentChip(
+                icon: Icons.payments_outlined,
+                label: amountLabel,
+                accent: AppColors.authAmber,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
+}
 
-  Widget summaryRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+class _PaymentSectionCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  const _PaymentSectionCard({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return CustomCard(
+      backgroundColor: const Color(0x08FFFFFF),
+      border: Border.all(color: AppColors.borderOnDark),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: AppColors.authHeading,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.authMuted,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentDetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _PaymentDetailRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariantDark.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 72,
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.authMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.authHeading,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentSummaryRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool highlight;
+
+  const _PaymentSummaryRow({
+    required this.label,
+    required this.value,
+    this.highlight = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: highlight
+            ? AppColors.authAmber.withValues(alpha: 0.1)
+            : AppColors.surfaceVariantDark.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.authHeading,
+                fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: highlight ? AppColors.authAmber : AppColors.authHeading,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _PaymentChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color accent;
+
+  const _PaymentChip({
+    required this.icon,
+    required this.label,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: accent),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.authHeading,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentLoadingState extends StatelessWidget {
+  const _PaymentLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: AppColors.authMint),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Loading payment details...',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: AppColors.authHeading,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Preparing your checkout summary.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.authMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentErrorState extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _PaymentErrorState({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: CustomCard(
+        backgroundColor: const Color(0x08FFFFFF),
+        border: Border.all(color: AppColors.borderOnDark),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.authAmber.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: AppColors.authAmber,
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Error loading payment information',
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: AppColors.authHeading,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Please retry to reload the checkout details.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.authMuted,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              child: PrimaryButton(
+                text: 'RETRY',
+                onPressed: onRetry,
+                borderRadius: AppSpacing.radiusPill,
+                foregroundColor: AppColors.authButtonText,
+                gradient: const LinearGradient(
+                  colors: [AppColors.authMint, AppColors.authMintDark],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentEmptyState extends StatelessWidget {
+  const _PaymentEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Text(
+        'No payment information available',
+        style: theme.textTheme.bodyLarge?.copyWith(color: AppColors.authMuted),
       ),
     );
   }

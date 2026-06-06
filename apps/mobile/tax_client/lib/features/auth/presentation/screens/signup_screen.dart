@@ -2,10 +2,14 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tax_client/core/common/widgets/app_logo.dart';
 import 'package:tax_client/core/common/widgets/auth_scaffold.dart';
 import 'package:tax_client/core/common/widgets/core_text_field.dart';
 import 'package:tax_client/core/common/widgets/primary_button.dart';
+import 'package:tax_client/core/config/theme/app_colors.dart';
+import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/config/strings/app_strings.dart';
+import 'package:tax_client/core/utils/error_handler.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_provider.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_state.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -51,7 +55,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
   void _validateForm() {
     setState(() {
-      _isFormValid = _nameController.text.trim().isNotEmpty &&
+      _isFormValid =
+          _nameController.text.trim().isNotEmpty &&
           _mobileController.text.trim().isNotEmpty &&
           _emailController.text.trim().isNotEmpty &&
           _passwordController.text.trim().isNotEmpty &&
@@ -63,211 +68,419 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   Future<void> _launchUrl(String urlString) async {
     final uri = Uri.parse(urlString);
     if (!await launchUrl(uri) && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not launch $urlString')),
-      );
+      ErrorHandler.showError(context, 'Could not open link. Please try again.');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authViewModelProvider);
-    final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     ref.listen<AuthState>(authViewModelProvider, (previous, next) {
       if (next is AuthRegistered) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.message)));
         context.go('/login');
       } else if (next is AuthAuthenticated) {
         context.go('/');
       } else if (next is AuthError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.message)));
       }
     });
 
     return AuthScaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const AuthHeader(
-            title: AppStrings.signupHeader,
-            subtitle: AppStrings.signupSubtitle,
-            logoHeight: 120,
-          ),
-          const SizedBox(height: 32),
-          AuthFormCard(
-            child: Column(
-              children: [
-                CoreTextField(
-                  controller: _nameController,
-                  label: AppStrings.nameLabel,
-                  hintText: AppStrings.nameHint,
-                  prefixIcon: const Icon(Icons.person_outline),
-                ),
-                const SizedBox(height: 16),
-                CoreTextField(
-                  controller: _mobileController,
-                  label: AppStrings.mobileLabel,
-                  hintText: AppStrings.mobileHint,
-                  keyboardType: TextInputType.phone,
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                ),
-                const SizedBox(height: 16),
-                CoreTextField(
-                  controller: _emailController,
-                  label: AppStrings.emailIdLabel,
-                  hintText: AppStrings.emailHint,
-                  keyboardType: TextInputType.emailAddress,
-                  prefixIcon: const Icon(Icons.email_outlined),
-                ),
-                const SizedBox(height: 16),
-                CoreTextField(
-                  controller: _passwordController,
-                  label: AppStrings.passwordLabel,
-                  hintText: AppStrings.passwordHint,
-                  obscureText: !_isPasswordVisible,
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordVisible
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                    ),
-                    onPressed: () =>
-                        setState(() => _isPasswordVisible = !_isPasswordVisible),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                CoreTextField(
-                  controller: _confirmPasswordController,
-                  label: AppStrings.passwordReenterLabel,
-                  hintText: AppStrings.passwordHint,
-                  obscureText: !_isConfirmPasswordVisible,
-                  prefixIcon: const Icon(Icons.lock_reset_outlined),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isConfirmPasswordVisible
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                    ),
-                    onPressed: () => setState(
-                      () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
+      maxContentWidth: 576,
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 360;
+
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Align(
+                alignment: Alignment.center,
+                child: AppLogo(height: 84, width: 84),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              AuthFormCard(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Checkbox(
-                      value: _isTermsAccepted,
-                      onChanged: (value) {
+                    Text(
+                      AppStrings.signupHeader,
+                      style: textTheme.headlineMedium?.copyWith(
+                        color: AppColors.authHeading,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      AppStrings.signupSubtitle,
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: AppColors.authMuted,
+                      ),
+                    ),
+                    SizedBox(
+                      height: isCompact ? AppSpacing.xl : AppSpacing.xxxl,
+                    ),
+                    AuthFieldGroup(
+                      label: 'FULL NAME',
+                      labelStyle: textTheme.labelSmall?.copyWith(
+                        color: AppColors.authMuted,
+                        letterSpacing: 2,
+                      ),
+                      child: CoreTextField(
+                        controller: _nameController,
+                        label: AppStrings.nameLabel,
+                        hintText: AppStrings.nameHint,
+                        useInlineLabel: false,
+                        fillColor: AppColors.surfaceVariantDark,
+                        enabledBorderColor: AppColors.borderOnDark,
+                        focusedBorderColor: AppColors.authMint,
+                        borderRadius: 16,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
+                        textStyle: textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authHeading,
+                        ),
+                        hintStyle: textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authMuted,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.person_outline_rounded,
+                          color: AppColors.authMuted,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    AuthFieldGroup(
+                      label: 'MOBILE',
+                      labelStyle: textTheme.labelSmall?.copyWith(
+                        color: AppColors.authMuted,
+                        letterSpacing: 2,
+                      ),
+                      child: CoreTextField(
+                        controller: _mobileController,
+                        label: AppStrings.mobileLabel,
+                        hintText: AppStrings.mobileHint,
+                        keyboardType: TextInputType.phone,
+                        useInlineLabel: false,
+                        fillColor: AppColors.surfaceVariantDark,
+                        enabledBorderColor: AppColors.borderOnDark,
+                        focusedBorderColor: AppColors.authMint,
+                        borderRadius: 16,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
+                        textStyle: textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authHeading,
+                        ),
+                        hintStyle: textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authMuted,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.phone_outlined,
+                          color: AppColors.authMuted,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    AuthFieldGroup(
+                      label: 'EMAIL IDENTIFIER',
+                      labelStyle: textTheme.labelSmall?.copyWith(
+                        color: AppColors.authMuted,
+                        letterSpacing: 2,
+                      ),
+                      child: CoreTextField(
+                        controller: _emailController,
+                        label: AppStrings.emailIdLabel,
+                        hintText: AppStrings.emailHint,
+                        keyboardType: TextInputType.emailAddress,
+                        useInlineLabel: false,
+                        fillColor: AppColors.surfaceVariantDark,
+                        enabledBorderColor: AppColors.borderOnDark,
+                        focusedBorderColor: AppColors.authMint,
+                        borderRadius: 16,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
+                        textStyle: textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authHeading,
+                        ),
+                        hintStyle: textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authMuted,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.alternate_email_rounded,
+                          color: AppColors.authMuted,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    AuthFieldGroup(
+                      label: 'PASSWORD',
+                      labelStyle: textTheme.labelSmall?.copyWith(
+                        color: AppColors.authMuted,
+                        letterSpacing: 2,
+                      ),
+                      child: CoreTextField(
+                        controller: _passwordController,
+                        label: AppStrings.passwordLabel,
+                        hintText: AppStrings.passwordHint,
+                        obscureText: !_isPasswordVisible,
+                        useInlineLabel: false,
+                        fillColor: AppColors.surfaceVariantDark,
+                        enabledBorderColor: AppColors.borderOnDark,
+                        focusedBorderColor: AppColors.authMint,
+                        borderRadius: 16,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
+                        textStyle: textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authHeading,
+                        ),
+                        hintStyle: textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authMuted,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline_rounded,
+                          color: AppColors.authMuted,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordVisible
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: AppColors.authMuted,
+                          ),
+                          onPressed: () => setState(
+                            () => _isPasswordVisible = !_isPasswordVisible,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    AuthFieldGroup(
+                      label: 'CONFIRM PASSWORD',
+                      labelStyle: textTheme.labelSmall?.copyWith(
+                        color: AppColors.authMuted,
+                        letterSpacing: 2,
+                      ),
+                      child: CoreTextField(
+                        controller: _confirmPasswordController,
+                        label: AppStrings.passwordReenterLabel,
+                        hintText: AppStrings.passwordHint,
+                        obscureText: !_isConfirmPasswordVisible,
+                        useInlineLabel: false,
+                        fillColor: AppColors.surfaceVariantDark,
+                        enabledBorderColor: AppColors.borderOnDark,
+                        focusedBorderColor: AppColors.authMint,
+                        borderRadius: 16,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
+                        textStyle: textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authHeading,
+                        ),
+                        hintStyle: textTheme.bodyMedium?.copyWith(
+                          color: AppColors.authMuted,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.lock_reset_outlined,
+                          color: AppColors.authMuted,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isConfirmPasswordVisible
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: AppColors.authMuted,
+                          ),
+                          onPressed: () => setState(
+                            () => _isConfirmPasswordVisible =
+                                !_isConfirmPasswordVisible,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                      onTap: () {
                         setState(() {
-                          _isTermsAccepted = value ?? false;
+                          _isTermsAccepted = !_isTermsAccepted;
                           _validateForm();
                         });
                       },
-                    ),
-                    Expanded(
-                      child: RichText(
-                        text: TextSpan(
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            height: 1.5,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: _isTermsAccepted
+                                  ? AppColors.authMint.withValues(alpha: 0.18)
+                                  : AppColors.authCheckboxFill,
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.sm,
+                              ),
+                              border: Border.all(
+                                color: _isTermsAccepted
+                                    ? AppColors.authMint
+                                    : AppColors.borderOnDark,
+                              ),
+                            ),
+                            child: _isTermsAccepted
+                                ? const Icon(
+                                    Icons.check,
+                                    size: 16,
+                                    color: AppColors.authMint,
+                                  )
+                                : null,
                           ),
-                          children: [
-                            const TextSpan(text: 'I agree to the '),
-                            TextSpan(
-                              text: 'Terms and Conditions',
-                              style: TextStyle(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
-                              ),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () => _launchUrl(
-                                      'https://allindiaitr.in/terms-and-condition',
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                style: textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.authMuted,
+                                  height: 1.5,
+                                ),
+                                children: [
+                                  const TextSpan(text: 'I agree to the '),
+                                  TextSpan(
+                                    text: 'Terms and Conditions',
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.authMint,
+                                      fontWeight: FontWeight.w600,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: AppColors.authMint
+                                          .withValues(alpha: 0.2),
                                     ),
-                            ),
-                            const TextSpan(text: ' and '),
-                            TextSpan(
-                              text: 'Privacy Policy',
-                              style: TextStyle(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
-                              ),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () => _launchUrl(
-                                      'https://allindiaitr.in/privacy-policy',
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () => _launchUrl(
+                                        'https://allindiaitr.in/terms-and-condition',
+                                      ),
+                                  ),
+                                  const TextSpan(text: ' and '),
+                                  TextSpan(
+                                    text: 'Privacy Policy',
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.authMint,
+                                      fontWeight: FontWeight.w600,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: AppColors.authMint
+                                          .withValues(alpha: 0.2),
                                     ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () => _launchUrl(
+                                        'https://allindiaitr.in/privacy-policy',
+                                      ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    PrimaryButton(
+                      text: 'CREATE ACCOUNT',
+                      borderRadius: 16,
+                      isLoading: authState is AuthLoading,
+                      minHeight: 60,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.authMint, AppColors.authMintDark],
+                      ),
+                      foregroundColor: AppColors.authButtonText,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x4D4EDEA3),
+                          blurRadius: 40,
+                          spreadRadius: -10,
+                          offset: Offset(0, 20),
                         ),
+                      ],
+                      textStyle: textTheme.titleMedium?.copyWith(
+                        color: AppColors.authButtonText,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      onPressed: (authState is AuthLoading || !_isFormValid)
+                          ? null
+                          : () {
+                              if (_passwordController.text.trim() !=
+                                  _confirmPasswordController.text.trim()) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(AppStrings.passwordMismatch),
+                                  ),
+                                );
+                                return;
+                              }
+                              ref
+                                  .read(authViewModelProvider.notifier)
+                                  .register(
+                                    _nameController.text.trim(),
+                                    _mobileController.text.trim(),
+                                    _emailController.text.trim(),
+                                    _passwordController.text.trim(),
+                                  );
+                            },
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Center(
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: AppSpacing.xs,
+                        children: [
+                          Text(
+                            AppStrings.alreadyHaveAccount,
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: AppColors.authMuted,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => context.go('/login'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.authHeading,
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              AppStrings.loginAction,
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: AppColors.authHeading,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
-                PrimaryButton(
-                  text: AppStrings.signupTitle,
-                  borderRadius: 16,
-                  isLoading: authState is AuthLoading,
-                  onPressed: (authState is AuthLoading || !_isFormValid)
-                      ? null
-                      : () {
-                          if (_passwordController.text.trim() !=
-                              _confirmPasswordController.text.trim()) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(AppStrings.passwordMismatch),
-                              ),
-                            );
-                            return;
-                          }
-                          ref.read(authViewModelProvider.notifier).register(
-                                _nameController.text.trim(),
-                                _mobileController.text.trim(),
-                                _emailController.text.trim(),
-                                _passwordController.text.trim(),
-                              );
-                        },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                AppStrings.alreadyHaveAccount,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              TextButton(
-                onPressed: () => context.go('/login'),
-                child: Text(
-                  AppStrings.loginAction,
-                  style: textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
               ),
             ],
-          ),
-          const SizedBox(height: 20),
-        ],
+          );
+        },
       ),
     );
   }

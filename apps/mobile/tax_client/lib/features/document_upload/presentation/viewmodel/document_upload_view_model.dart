@@ -115,17 +115,18 @@ class DocumentUploadViewModel extends StateNotifier<DocumentUploadState> {
     result.fold(
       (failure) => state = DocumentUploadError(_getErrorMessage(failure)),
       (response) {
+        final uploadedPath = response.fileUrl ?? response.filePath ?? '';
         // Store the uploaded document info
         _uploadedDocuments[documentCategory] = {
           'fileName': response.fileName ?? fileName,
-          'filePath': response.fileUrl ?? '',
+          'filePath': uploadedPath,
           'fileType': _getFileType(file.path),
           'docId': '', // Will be set after save
         };
 
         state = DocumentUploadSuccess(
           fileName: response.fileName ?? fileName,
-          filePath: response.fileUrl ?? '',
+          filePath: uploadedPath,
           message: response.message,
         );
       },
@@ -138,7 +139,7 @@ class DocumentUploadViewModel extends StateNotifier<DocumentUploadState> {
   }) async {
     // Combine existing documents and newly uploaded documents
     final allDocuments = <DocumentItemModel>[];
-    
+
     // Add existing documents from server
     if (existingDocuments != null && existingDocuments.isNotEmpty) {
       for (final doc in existingDocuments) {
@@ -155,7 +156,7 @@ class DocumentUploadViewModel extends StateNotifier<DocumentUploadState> {
         }
       }
     }
-    
+
     // Add newly uploaded documents
     if (_uploadedDocuments.isNotEmpty) {
       final newDocuments = _uploadedDocuments.entries.map((entry) {
@@ -169,7 +170,7 @@ class DocumentUploadViewModel extends StateNotifier<DocumentUploadState> {
           fileName: fileInfo['fileName'] ?? '',
         );
       }).toList();
-      
+
       allDocuments.addAll(newDocuments);
     }
 
@@ -237,6 +238,6 @@ class DocumentUploadViewModel extends StateNotifier<DocumentUploadState> {
   }
 
   bool hasUploadedDocuments() => _uploadedDocuments.isNotEmpty;
-  
+
   List<DocumentModel> get fetchedDocuments => _fetchedDocuments;
 }

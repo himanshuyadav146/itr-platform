@@ -80,14 +80,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $firstName = mysqli_real_escape_string($conn, $firstName);
     $middleName = mysqli_real_escape_string($conn, $middleName);
     $lastName = mysqli_real_escape_string($conn, $lastName);
-    $mobile = mysqli_real_escape_string($conn, $data['mobile'] ?? '');
+    // Accept both mobile (new) and phone (legacy admin payload)
+    $mobileInput = $data['mobile'] ?? ($data['phone'] ?? '');
+    $mobile = mysqli_real_escape_string($conn, $mobileInput);
     $password = mysqli_real_escape_string($conn, $data['password'] ?? '');
     $platform = mysqli_real_escape_string($conn, $data['platform'] ?? 'web');
     $version = mysqli_real_escape_string($conn, $data['version'] ?? '1.0');
     
-    // Handle Role - validate against ENUM values (accept both 'role' and 'Role')
-    $validRoles = ['CLIENT', 'ADMIN', 'ACCOUNTANT', 'CA'];
-    $role = isset($data['role']) ? strtoupper(trim($data['role'])) : (isset($data['Role']) ? strtoupper(trim($data['Role'])) : 'CLIENT');
+    // Handle Role - validate against ENUM values.
+    // Accept role/Role, and map legacy occupation from admin register screen.
+    $validRoles = ['CLIENT', 'ADMIN', 'ACCOUNTANT', 'CA', 'TAX_EXPERT'];
+    $roleRaw = $data['role'] ?? ($data['Role'] ?? ($data['occupation'] ?? null));
+    $role = $roleRaw ? strtoupper(trim($roleRaw)) : 'CLIENT';
     
     // Validate Role - if invalid, default to CLIENT
     if (!in_array($role, $validRoles)) {

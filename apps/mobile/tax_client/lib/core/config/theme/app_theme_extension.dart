@@ -21,7 +21,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     authBackgroundGradient: AppColors.authGradient,
     glassCardColor: AppColors.authCardFill,
     glassCardBorderColor: AppColors.authCardBorder,
-    glassCardShadowColor: Color(0x33000000),
+    glassCardShadowColor: Color(0x66000000),
   );
 
   @override
