@@ -20,6 +20,7 @@ import { AssignProfessionalModal } from '../components/itr/AssignProfessionalMod
 import { PersonalDetailsForm } from '../components/itr/PersonalDetailsForm';
 import { MarkITRCompleteForm } from '../components/itr/MarkITRCompleteForm';
 import { InfoCard } from '../components/common/InfoCard';
+import { canAssignItr } from '../utils/itrStatus';
 
 /** Backend `documents.php?itrId=` expects itrDetails[].itrId, not personalDetailId (route id). */
 function resolveBackendItrIdForDocuments(itr: ITRWithDetails | null | undefined): number {
@@ -299,7 +300,7 @@ const ITRDetailPage = () => {
           <ITRDetails
             itr={currentItr}
             onAssign={() => setAssignModalOpen(true)}
-            hasSuccessfulPayment={currentItr?.status === 'PAID' || currentItr?.status === 'SUCCESS'}
+            hasSuccessfulPayment={canAssignItr(currentItr)}
           />
         </Box>
 
