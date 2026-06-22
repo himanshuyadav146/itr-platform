@@ -43,6 +43,8 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Re-entry: show API-saved documents only, not stale local picker files.
+      ref.read(documentsProvider.notifier).clearAll();
       ref.read(documentUploadViewModelProvider.notifier).fetchDocuments();
     });
   }

@@ -57,6 +57,15 @@ class DocumentsNotifier extends StateNotifier<Map<String, DocumentCategory>> {
     state = {...state, categoryKey: category.copyWith(files: updatedFiles)};
   }
 
+  /// Clears picked local files (e.g. when re-opening the upload screen).
+  void clearAll() {
+    state = {
+      'form16a': DocumentCategory(title: 'Form 16-A', files: []),
+      'form16b': DocumentCategory(title: 'Form 16-B', files: []),
+      'others': DocumentCategory(title: 'Other Documents', files: []),
+    };
+  }
+
   // Method to set files for a category (used when loading from server)
   void setCategoryFiles(String categoryKey, List<File> files) {
     final category = state[categoryKey]!;
