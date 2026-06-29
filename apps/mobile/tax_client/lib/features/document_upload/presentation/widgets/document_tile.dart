@@ -3,14 +3,21 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:tax_client/core/common/widgets/custom_card.dart';
 import 'package:tax_client/core/common/widgets/document_viewer_modal.dart';
+import 'package:tax_client/core/config/strings/app_strings.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 
 class DocumentTile extends StatelessWidget {
   final File file;
   final VoidCallback onDelete;
+  final String? pdfPassword;
 
-  const DocumentTile({super.key, required this.file, required this.onDelete});
+  const DocumentTile({
+    super.key,
+    required this.file,
+    required this.onDelete,
+    this.pdfPassword,
+  });
 
   bool _isPdf(String path) {
     final lowerPath = path.toLowerCase();
@@ -95,9 +102,17 @@ class DocumentTile extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
-                        'Ready to submit',
+                        (pdfPassword != null && pdfPassword!.isNotEmpty)
+                            ? AppStrings.form16PasswordAdded
+                            : 'Ready to submit',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.authMuted,
+                          color: (pdfPassword != null && pdfPassword!.isNotEmpty)
+                              ? AppColors.authMint
+                              : AppColors.authMuted,
+                          fontWeight: (pdfPassword != null &&
+                                  pdfPassword!.isNotEmpty)
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                       ),
                     ],
