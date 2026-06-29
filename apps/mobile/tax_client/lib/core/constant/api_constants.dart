@@ -1,8 +1,9 @@
 class ApiConstants {
   ApiConstants._();
 
-  /// Base URL for all API requests
-  static const String baseUrl = 'http://allindiaitr.in';
+  /// Base URL for all API requests (production).
+  /// For local dev (emulator): use `http://10.0.2.2` instead.
+  static const String baseUrl = 'https://allindiaitr.in';
   static const String api = '/api';
 
   //https://allindiaitr.in/privacy-policy

@@ -13,6 +13,7 @@ import 'package:tax_client/features/document_upload/presentation/providers/docum
 import 'package:tax_client/features/document_upload/presentation/providers/document_upload_state.dart';
 import 'package:tax_client/features/document_upload/presentation/widgets/document_model_tile.dart';
 import 'package:tax_client/features/document_upload/presentation/widgets/document_tile.dart';
+import 'package:tax_client/features/document_upload/presentation/widgets/form16_password_sheet.dart';
 import 'package:tax_client/features/document_upload/providers/documents_provider.dart';
 import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_provider.dart';
@@ -43,6 +44,8 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Re-entry: show API-saved documents only, not stale local picker files.
+      ref.read(documentsProvider.notifier).clearAll();
       ref.read(documentUploadViewModelProvider.notifier).fetchDocuments();
     });
   }
@@ -77,12 +80,37 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
     }
 
     final file = files.last;
+    if (!mounted) return;
+
+    var filePassword = '';
+
+    if (categoryKey == 'form16a' || categoryKey == 'form16b') {
+      final formLabel = categoryKey == 'form16a' ? 'Form 16-A' : 'Form 16-B';
+      final passwordResult = await showForm16PasswordSheet(
+        context,
+        formLabel: formLabel,
+      );
+
+      if (!mounted) return;
+
+      if (passwordResult == null) {
+        notifier.removeDocument(categoryKey, file);
+        return;
+      }
+
+      filePassword = passwordResult;
+      if (filePassword.isNotEmpty) {
+        notifier.setFilePassword(categoryKey, file.path, filePassword);
+      }
+    }
+
     ref
         .read(documentUploadViewModelProvider.notifier)
         .uploadDocument(
           documentCategory: categoryKey,
           fileName: categoryKey,
           file: file,
+          filePassword: filePassword,
         );
   }
 
@@ -321,6 +349,8 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
                                     ),
                                     child: DocumentTile(
                                       file: file,
+                                      pdfPassword: category
+                                          .filePasswords[file.path],
                                       onDelete: () => notifier.removeDocument(
                                         categoryKey,
                                         file,

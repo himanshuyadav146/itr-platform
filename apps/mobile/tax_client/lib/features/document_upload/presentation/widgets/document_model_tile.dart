@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tax_client/core/common/widgets/custom_card.dart';
 import 'package:tax_client/core/common/widgets/document_viewer_modal.dart';
+import 'package:tax_client/core/config/strings/app_strings.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/network/token_storage.dart';
@@ -34,6 +35,12 @@ class DocumentModelTile extends ConsumerWidget {
         lowerPath.contains('.jpg?') ||
         lowerPath.contains('.jpeg?') ||
         lowerPath.contains('.png?');
+  }
+
+  bool _isForm16Document(String? documentName) {
+    if (documentName == null || documentName.isEmpty) return false;
+    final name = documentName.toLowerCase();
+    return name.contains('form 16') || name.contains('form16');
   }
 
   @override
@@ -104,6 +111,25 @@ class DocumentModelTile extends ConsumerWidget {
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
+                          if (_isForm16Document(document.documentName)) ...[
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              (document.filePassword != null &&
+                                      document.filePassword!.isNotEmpty)
+                                  ? AppStrings.form16PasswordAdded
+                                  : AppStrings.form16PasswordNotProvided,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: (document.filePassword != null &&
+                                        document.filePassword!.isNotEmpty)
+                                    ? AppColors.authMint
+                                    : AppColors.authMuted,
+                                fontWeight: (document.filePassword != null &&
+                                        document.filePassword!.isNotEmpty)
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

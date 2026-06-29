@@ -92,6 +92,7 @@ class DocumentUploadViewModel extends StateNotifier<DocumentUploadState> {
     required String documentCategory,
     required String fileName,
     required File file,
+    String filePassword = '',
   }) async {
     state = DocumentUploading(fileName);
 
@@ -121,6 +122,7 @@ class DocumentUploadViewModel extends StateNotifier<DocumentUploadState> {
           'fileName': response.fileName ?? fileName,
           'filePath': uploadedPath,
           'fileType': _getFileType(file.path),
+          'filePassword': filePassword,
           'docId': '', // Will be set after save
         };
 
@@ -149,7 +151,7 @@ class DocumentUploadViewModel extends StateNotifier<DocumentUploadState> {
             DocumentItemModel(
               documentName: doc.documentName!,
               fileType: doc.fileType,
-              filePassword: '',
+              filePassword: doc.filePassword ?? '',
               fileName: doc.fileName!,
             ),
           );
@@ -166,7 +168,7 @@ class DocumentUploadViewModel extends StateNotifier<DocumentUploadState> {
         return DocumentItemModel(
           documentName: docName,
           fileType: fileInfo['fileType'] ?? 'pdf',
-          filePassword: '',
+          filePassword: fileInfo['filePassword'] ?? '',
           fileName: fileInfo['fileName'] ?? '',
         );
       }).toList();
