@@ -79,3 +79,10 @@ android {
 flutter {
     source = "../.."
 }
+
+configurations.configureEach {
+    resolutionStrategy {
+        // Prefer latest Razorpay checkout SDK (may reduce Play Console SDK warnings).
+        force("com.razorpay:checkout:1.6.41")
+    }
+}

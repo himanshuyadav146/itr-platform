@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/config/theme/app_theme_extension.dart';
@@ -12,16 +11,6 @@ import 'package:tax_client/core/config/theme/app_typography.dart';
 /// https://api.flutter.dev/flutter/material/ThemeData-class.html
 class AppTheme {
   AppTheme._();
-
-  /// Transparent system bars for Android 15+ edge-to-edge (avoid deprecated color APIs).
-  static const SystemUiOverlayStyle edgeToEdgeOverlay = SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    systemNavigationBarColor: Colors.transparent,
-    systemNavigationBarDividerColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    statusBarBrightness: Brightness.dark,
-    systemNavigationBarIconBrightness: Brightness.light,
-  );
 
   /// Single [ThemeData] for the whole app (dark / Figma).
   static ThemeData get theme {
@@ -59,7 +48,6 @@ class AppTheme {
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
         centerTitle: true,
-        systemOverlayStyle: edgeToEdgeOverlay,
         titleTextStyle: baseTextTheme.titleLarge?.copyWith(
           color: colorScheme.onSurface,
         ),
