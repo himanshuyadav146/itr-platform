@@ -13,6 +13,16 @@ import 'package:tax_client/core/config/theme/app_typography.dart';
 class AppTheme {
   AppTheme._();
 
+  /// Transparent system bars for Android 15+ edge-to-edge (avoid deprecated color APIs).
+  static const SystemUiOverlayStyle edgeToEdgeOverlay = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
+    systemNavigationBarIconBrightness: Brightness.light,
+  );
+
   /// Single [ThemeData] for the whole app (dark / Figma).
   static ThemeData get theme {
     const colorScheme = ColorScheme(
@@ -49,7 +59,7 @@ class AppTheme {
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
         centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
+        systemOverlayStyle: edgeToEdgeOverlay,
         titleTextStyle: baseTextTheme.titleLarge?.copyWith(
           color: colorScheme.onSurface,
         ),
