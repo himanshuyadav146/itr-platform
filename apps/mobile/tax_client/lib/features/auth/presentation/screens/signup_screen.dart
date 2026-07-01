@@ -9,10 +9,10 @@ import 'package:tax_client/core/common/widgets/primary_button.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/config/strings/app_strings.dart';
-import 'package:tax_client/core/utils/error_handler.dart';
+import 'package:tax_client/core/constant/api_constants.dart';
+import 'package:tax_client/core/utils/web_content_navigation.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_provider.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_state.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -65,11 +65,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     });
   }
 
-  Future<void> _launchUrl(String urlString) async {
-    final uri = Uri.parse(urlString);
-    if (!await launchUrl(uri) && mounted) {
-      ErrorHandler.showError(context, 'Could not open link. Please try again.');
-    }
+  void _openPolicyPage({required String path, required String title}) {
+    openWebContent(context, path: path, title: title);
   }
 
   @override
@@ -371,8 +368,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                           .withValues(alpha: 0.2),
                                     ),
                                     recognizer: TapGestureRecognizer()
-                                      ..onTap = () => _launchUrl(
-                                        'https://allindiaitr.in/terms-and-condition',
+                                      ..onTap = () => _openPolicyPage(
+                                        path: ApiConstants.itrTermsAndConditions,
+                                        title: 'Terms and Conditions',
                                       ),
                                   ),
                                   const TextSpan(text: ' and '),
@@ -386,8 +384,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                           .withValues(alpha: 0.2),
                                     ),
                                     recognizer: TapGestureRecognizer()
-                                      ..onTap = () => _launchUrl(
-                                        'https://allindiaitr.in/privacy-policy',
+                                      ..onTap = () => _openPolicyPage(
+                                        path: ApiConstants.itrPrivacyPolicy,
+                                        title: 'Privacy Policy',
                                       ),
                                   ),
                                 ],

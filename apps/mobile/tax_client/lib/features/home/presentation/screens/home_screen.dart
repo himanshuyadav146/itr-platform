@@ -15,7 +15,7 @@ import 'package:tax_client/core/constant/api_constants.dart';
 import 'package:tax_client/core/config/app_router.dart';
 import 'package:tax_client/core/network/token_storage.dart';
 import 'package:tax_client/core/utils/error_handler.dart';
-import 'package:tax_client/core/utils/external_link_launcher.dart';
+import 'package:tax_client/core/utils/web_content_navigation.dart';
 import 'package:tax_client/features/home/domain/dashboard_mode.dart';
 import 'package:tax_client/features/home/presentation/providers/home_dashboard_provider.dart';
 import 'package:tax_client/features/packages/data/models/package_model.dart';
@@ -156,8 +156,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     }
   }
 
-  Future<void> _openContactUs() async {
-    await ExternalLinkLauncher.openPage(context, ApiConstants.itrContactUS);
+  void _openContactUs(BuildContext context) {
+    openWebContent(
+      context,
+      path: ApiConstants.itrContactUS,
+      title: AppStrings.contactSupport,
+    );
   }
 
   void _openOrders(BuildContext context) {
@@ -566,7 +570,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                           _openDocuments(context, snapshot, packagesAsync),
                       onOpenOrders: () => _openOrders(context),
                       onContactSupport: () {
-                        _openContactUs();
+                        _openContactUs(context);
                       },
                       onResolveAction: (action) => _resolveDashboardAction(
                         context,

@@ -19,6 +19,7 @@ import 'package:tax_client/features/tax_calculator/presentation/screens/tax_calc
 import '../../features/document_upload/presentation/screens/upload_documents_screen.dart';
 import 'package:tax_client/features/status/presentation/screens/status_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
+import 'package:tax_client/core/common/screens/web_content_screen.dart';
 
 class AppRouter {
   static GoRouter? _router;
@@ -150,6 +151,14 @@ class AppRouter {
           path: '/splash',
           builder: (BuildContext context, GoRouterState state) {
             return const SplashScreen();
+          },
+        ),
+        GoRoute(
+          path: '/web',
+          builder: (BuildContext context, GoRouterState state) {
+            final path = state.uri.queryParameters['path'] ?? '/';
+            final title = state.uri.queryParameters['title'] ?? 'FinApp';
+            return WebContentScreen(path: path, title: title);
           },
         ),
       ],

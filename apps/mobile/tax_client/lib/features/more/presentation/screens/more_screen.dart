@@ -13,7 +13,7 @@ import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/network/token_storage.dart';
 import 'package:tax_client/core/utils/error_handler.dart';
-import 'package:tax_client/core/utils/external_link_launcher.dart';
+import 'package:tax_client/core/utils/web_content_navigation.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_provider.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_state.dart';
 import 'package:tax_client/features/auth/presentation/providers/user_provider.dart';
@@ -298,25 +298,30 @@ class MoreScreen extends ConsumerWidget {
             icon: Icons.info_outline_rounded,
             label: AppStrings.aboutUs,
             subtitle: 'Learn more about the ITR platform and team.',
-            onTap: () =>
-                ExternalLinkLauncher.openPage(context, ApiConstants.itrAboutUS),
+            onTap: () => openWebContent(
+              context,
+              path: ApiConstants.itrAboutUS,
+              title: AppStrings.aboutUs,
+            ),
           ),
           _MoreTile(
             icon: Icons.privacy_tip_outlined,
             label: AppStrings.privacyPolicy,
             subtitle: 'Read how your information is protected.',
-            onTap: () => ExternalLinkLauncher.openPage(
+            onTap: () => openWebContent(
               context,
-              ApiConstants.itrPrivacyPolicy,
+              path: ApiConstants.itrPrivacyPolicy,
+              title: AppStrings.privacyPolicy,
             ),
           ),
           _MoreTile(
             icon: Icons.support_agent_rounded,
             label: AppStrings.contactSupport,
             subtitle: 'Reach the team if you need help with filing.',
-            onTap: () => ExternalLinkLauncher.openPage(
+            onTap: () => openWebContent(
               context,
-              ApiConstants.itrContactUS,
+              path: ApiConstants.itrContactUS,
+              title: AppStrings.contactSupport,
             ),
           ),
           const SizedBox(height: AppSpacing.lg),

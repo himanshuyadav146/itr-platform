@@ -29,6 +29,13 @@ class ApiConstants {
   static const String itrPrivacyPolicy = '/privacy-policy';
   static const String itrContactUS = '/contact-us';
   static const String itrAboutUS = '/about-us';
+  static const String itrTermsAndConditions = '/terms-and-condition';
+
+  /// Full HTTPS URL for a public marketing or policy page path.
+  static String publicPageUrl(String path) {
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    return '$baseUrl$normalizedPath';
+  }
 
   // Package Endpoints
   static const String packageGetPackages = '$api/package/getPackages.php';
