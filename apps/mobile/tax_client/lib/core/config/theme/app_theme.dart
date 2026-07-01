@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/config/theme/app_theme_extension.dart';
@@ -49,7 +48,6 @@ class AppTheme {
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
         centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
         titleTextStyle: baseTextTheme.titleLarge?.copyWith(
           color: colorScheme.onSurface,
         ),
