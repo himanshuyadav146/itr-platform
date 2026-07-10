@@ -14,6 +14,7 @@ import {
   Description as DescriptionIcon,
   Group as GroupIcon,
   Inventory2 as PackagesIcon,
+  Notifications as NotificationsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
@@ -57,6 +58,12 @@ const menuItems: MenuItem[] = [
     text: 'Packages',
     icon: <PackagesIcon />,
     path: '/packages',
+    roles: [UserRole.ADMIN],
+  },
+  {
+    text: 'Notifications',
+    icon: <NotificationsIcon />,
+    path: '/notification-templates',
     roles: [UserRole.ADMIN],
   },
 ];

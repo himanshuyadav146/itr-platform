@@ -1,37 +1,17 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tax_client/core/config/app_router.dart';
-import 'package:tax_client/core/config/theme/app_theme.dart';
-
-import 'package:tax_client/core/network/no_internet_notifier.dart';
-import 'package:tax_client/core/network/logout_notifier.dart';
-import 'package:tax_client/core/common/widgets/no_internet_sheet.dart';
-
-import 'package:tax_client/core/config/router_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter/foundation.dart';
-
-import 'package:tax_client/core/network/token_storage.dart';
-import 'package:tax_client/core/services/push_notification/push_notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  debugPrint("Handling a background message: ${message.messageId}");
-}
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tax_client/app_root.dart';
+import 'package:tax_client/core/services/push_notification/fcm_background_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  final container = ProviderContainer();
-
-  final tokenStorage = container.read(tokenStorageProvider);
-  await PushNotificationService.init(tokenStorage);
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   FlutterError.onError = (errorDetails) {
     FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
@@ -42,36 +22,5 @@ void main() async {
     return true;
   };
 
-  runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
-}
-
-class MyApp extends ConsumerWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(routerProvider);
-
-    ref.listen<DateTime?>(noInternetNotifierProvider, (prev, next) {
-      if (next != null) {
-        showNoInternetSheet(context);
-      }
-    });
-
-    ref.listen<bool>(logoutNotifierProvider, (prev, next) {
-      if (next) {
-        final currentRouter = AppRouter.router;
-        if (currentRouter != null) {
-          currentRouter.go('/login');
-        }
-        ref.read(logoutNotifierProvider.notifier).reset();
-      }
-    });
-
-    return MaterialApp.router(
-      title: 'Flutter Tax Client',
-      theme: AppTheme.theme,
-      routerConfig: router,
-    );
-  }
+  runApp(const ProviderScope(child: AppRoot()));
 }

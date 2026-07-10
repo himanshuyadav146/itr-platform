@@ -4,6 +4,7 @@ header("Content-Type: application/json");
 
 require '../include/config.php';
 require '../itr_status/StatusHelper.php';
+require_once '../include/NotificationDispatcher.php';
 
 // Log webhook data
 $webhookData = file_get_contents("php://input");
@@ -111,6 +112,14 @@ if ($orderId) {
                         true,
                         "Payment completed via " . $gatewayNameForNotes
                     );
+
+                    notifyWorkflowEvent($conn, 'payment.success', [
+                        'userId' => $userId,
+                        'orderId' => $orderId,
+                        'pan' => $panNumber ?? '',
+                        'amount' => $payment['grand_total'] ?? $amount ?? '',
+                        'itrId' => $itrId,
+                    ]);
                 }
             }
             

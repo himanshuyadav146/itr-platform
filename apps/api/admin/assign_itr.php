@@ -22,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require '../include/config.php';
 require '../phpjwt/Token.php';
 require '../itr_status/StatusHelper.php';
+require_once '../include/NotificationDispatcher.php';
 
 // Token verification
 $headers = getallheaders();
@@ -138,6 +139,8 @@ if ($method === 'POST') {
         // Record expert_assigned step in itr_order_status so get_detailed_status shows it
         $itrCheckResult->data_seek(0);
         $itrRow = $itrCheckResult->fetch_assoc();
+        $panForStatus = null;
+        $orderIdForStatus = null;
         if ($itrRow) {
             $clientUserId = mysqli_real_escape_string($conn, $itrRow['userId']);
             $orderIdForStatus = null;
@@ -164,6 +167,13 @@ if ($method === 'POST') {
                 );
             }
         }
+        notifyWorkflowEvent($conn, 'expert.assigned', [
+            'itrId' => $itrId,
+            'professionalId' => $professionalId,
+            'userId' => $itrRow['userId'] ?? null,
+            'pan' => $panForStatus ?? '',
+            'orderId' => $orderIdForStatus,
+        ]);
         http_response_code(201);
         echo json_encode([
             "status" => "success",

@@ -6,6 +6,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
 
 require '../include/config.php';
+require_once '../include/NotificationDispatcher.php';
 
 // Check if the request method is POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -109,6 +110,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ('$firstName', '$middleName', '$lastName', '$email', '$mobile', '$password', '$role', '$currentDateTime', '$platform', '$version')";
 
     if ($conn->query($sql) === TRUE) {
+
+        $newUserId = $conn->insert_id;
+
+        // Notify admin + welcome client (non-blocking)
+        if ($role === 'CLIENT') {
+            notifyWorkflowEvent($conn, 'client.registered', [
+                'userId' => $newUserId,
+                'clientName' => trim("$firstName $lastName"),
+                'email' => trim($data['email'] ?? ''),
+                'mobile' => $mobileInput,
+            ]);
+        }
 
         $response = [
             "statusCode" => 201,

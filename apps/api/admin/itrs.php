@@ -718,6 +718,7 @@ elseif ($method === 'PUT') {
     $concernStatus = ($status === 'COMPLETED') ? 'resolved' : 'pending';
     $concernResolvedBy = ($status === 'COMPLETED') ? (string)$professionalId : 'NULL';
     $concernResolvedAt = ($status === 'COMPLETED') ? 'NOW()' : 'NULL';
+    $statusUpdateConcernId = null;
     $concernTableCheck = $conn->query("SHOW TABLES LIKE 'itr_order_concerns'");
     if ($concernTableCheck && $concernTableCheck->num_rows > 0) {
         $hasCommentCol = $conn->query("SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'itr_order_concerns' AND COLUMN_NAME = 'comment' LIMIT 1");
@@ -732,6 +733,9 @@ elseif ($method === 'PUT') {
         $insertOk = false;
         try {
             $insertOk = $conn->query($ins);
+            if ($insertOk) {
+                $statusUpdateConcernId = $conn->insert_id;
+            }
             if (!$insertOk && $conn->error) {
                 $err = $conn->error;
                 error_log('[admin/itrs.php] itr_order_concerns insert failed: ' . $err);
@@ -739,6 +743,9 @@ elseif ($method === 'PUT') {
                 if (stripos($err, 'status_id') !== false && (stripos($err, 'default') !== false || stripos($err, 'null') !== false)) {
                     @$conn->query("ALTER TABLE itr_order_concerns MODIFY COLUMN status_id int(11) DEFAULT NULL COMMENT 'FK to itr_order_status (nullable for status_update)'");
                     $insertOk = $conn->query($ins);
+                    if ($insertOk) {
+                        $statusUpdateConcernId = $conn->insert_id;
+                    }
                     if (!$insertOk && $conn->error) {
                         error_log('[admin/itrs.php] itr_order_concerns insert retry failed: ' . $conn->error);
                     }
@@ -751,11 +758,53 @@ elseif ($method === 'PUT') {
                 try {
                     @$conn->query("ALTER TABLE itr_order_concerns MODIFY COLUMN status_id int(11) DEFAULT NULL COMMENT 'FK to itr_order_status (nullable for status_update)'");
                     $insertOk = $conn->query($ins);
+                    if ($insertOk) {
+                        $statusUpdateConcernId = $conn->insert_id;
+                    }
                 } catch (Throwable $e2) {
                     error_log('[admin/itrs.php] itr_order_concerns insert retry exception: ' . $e2->getMessage());
                 }
             }
         }
+    }
+
+    try {
+        require_once '../include/NotificationDispatcher.php';
+
+        $panForNotify = '';
+        $orderIdForNotify = null;
+        $clientUserIdEscaped = mysqli_real_escape_string($conn, $clientUserId);
+        $paySql = "SELECT order_id, pan_number FROM payment_info WHERE user_id = '$clientUserIdEscaped' AND payment_status = 'success' ORDER BY paid_at DESC LIMIT 1";
+        $payRes = $conn->query($paySql);
+        if ($payRes && $payRes->num_rows > 0) {
+            $payRow = $payRes->fetch_assoc();
+            $orderIdForNotify = $payRow['order_id'] ?? null;
+            $panForNotify = $payRow['pan_number'] ?? '';
+        }
+        if ($panForNotify === '') {
+            $itrPanRes = $conn->query("SELECT panNumber FROM itr_detail WHERE id = '$itrIdEscaped' LIMIT 1");
+            if ($itrPanRes && $itrPanRes->num_rows > 0) {
+                $panForNotify = $itrPanRes->fetch_assoc()['panNumber'] ?? '';
+            }
+        }
+
+        $notifyRefId = $statusUpdateConcernId
+            ? (string) $statusUpdateConcernId
+            : ($itrId . ':' . md5($status . '|' . $comment));
+
+        notifyWorkflowEvent($conn, 'status.updated', [
+            'userId' => $clientUserId,
+            'itrId' => (int) $itrId,
+            'pan' => $panForNotify,
+            'orderId' => $orderIdForNotify,
+            'statusLabel' => $status,
+            'statusComment' => $comment,
+            'professionalId' => $professionalId,
+            'notificationReferenceType' => 'status_update',
+            'notificationReferenceId' => $notifyRefId,
+        ]);
+    } catch (Throwable $e) {
+        error_log('[admin/itrs.php] notification failed: ' . $e->getMessage());
     }
 
     // When expert sets status to COMPLETED, mark the first incomplete workflow step as complete

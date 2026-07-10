@@ -4,15 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tax_client/core/error/failures.dart';
 import 'package:tax_client/core/network/api_client.dart';
 import 'package:tax_client/core/network/token_storage.dart';
+import 'package:tax_client/core/utils/device_platform.dart';
 import 'package:tax_client/core/utils/jwt_decoder.dart';
-import 'package:tax_client/core/services/push_notification/push_notification_service.dart';
 import 'package:tax_client/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:tax_client/features/auth/data/models/login_request_model.dart';
 import 'package:tax_client/features/auth/data/models/signup_request_model.dart';
 import 'package:tax_client/features/auth/data/models/forget_password_request_model.dart';
 import 'package:tax_client/features/auth/domain/entities/user.dart';
 import 'package:tax_client/features/auth/domain/repositories/auth_repository.dart';
-import 'dart:io' show Platform;
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepositoryImpl(
@@ -78,8 +77,7 @@ class AuthRepositoryImpl implements AuthRepository {
         // Set token in API client for future requests
         apiClient.setAuthToken(token);
 
-        // Register FCM token with backend now that user is authenticated
-        _registerFcmAfterLogin();
+        await _registerStoredFcmToken();
 
         return Right((user: user, token: token));
       } else {
@@ -152,6 +150,8 @@ class AuthRepositoryImpl implements AuthRepository {
         // Update token in API client
         apiClient.setAuthToken(token);
 
+        await _registerStoredFcmToken();
+
         return Right(token);
       } else {
         return Left(ServerFailure(message: result.message));
@@ -186,28 +186,24 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  /// Called after successful login to register the stored FCM token with the backend
-  void _registerFcmAfterLogin() async {
+  /// Registers locally stored FCM token when user session is active.
+  Future<void> _registerStoredFcmToken() async {
     try {
-      final fcmToken = await PushNotificationService.getStoredFcmToken();
+      final fcmToken = await tokenStorage.getFcmToken();
       if (fcmToken == null || fcmToken.isEmpty) {
-        debugPrint('No stored FCM token to register after login.');
+        debugPrint('No stored FCM token to register after auth.');
         return;
       }
 
-      String platform = 'unknown';
-      if (kIsWeb) {
-        platform = 'web';
-      } else if (Platform.isAndroid) {
-        platform = 'android';
-      } else if (Platform.isIOS) {
-        platform = 'ios';
-      }
-
-      await remoteDataSource.registerFcm(fcmToken, platform);
-      debugPrint('FCM Token registered with backend after login. Platform: $platform');
+      final result = await registerFcm(fcmToken, getDevicePlatform());
+      result.fold(
+        (failure) => debugPrint(
+          'Failed to register FCM token after auth: ${failure is ServerFailure ? failure.message : failure}',
+        ),
+        (_) => debugPrint('FCM token registered with backend after auth.'),
+      );
     } catch (e) {
-      debugPrint('Failed to register FCM token after login: $e');
+      debugPrint('Failed to register FCM token after auth: $e');
     }
   }
 

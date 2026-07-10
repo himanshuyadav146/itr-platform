@@ -507,6 +507,45 @@ if ($isCompleted && $itrId) {
 // ========================================
 // SUCCESS RESPONSE
 // ========================================
+try {
+    require_once '../include/NotificationDispatcher.php';
+
+    $assignedProfessionalId = (int) $professionalId;
+    if ($itrId) {
+        $profColumn = 'professional_id';
+        $colResult = $conn->query("SHOW COLUMNS FROM itr_assignments WHERE Field IN ('assigned_to', 'professional_id')");
+        if ($colResult) {
+            while ($colRow = $colResult->fetch_assoc()) {
+                if ($colRow['Field'] === 'assigned_to') {
+                    $profColumn = 'assigned_to';
+                    break;
+                }
+            }
+        }
+        $assignResult = $conn->query("SELECT $profColumn AS prof_id FROM itr_assignments WHERE itr_id = " . (int) $itrId . " LIMIT 1");
+        if ($assignResult && $assignResult->num_rows > 0) {
+            $assignedProfessionalId = (int) ($assignResult->fetch_assoc()['prof_id'] ?? $assignedProfessionalId);
+        }
+    }
+
+    if ($isCompleted) {
+        $refId = ($orderId ?: ('itr_' . $itrId)) . ':' . $statusStep . ':completed';
+        notifyWorkflowEvent($conn, 'status.step_updated', [
+            'userId' => $userId,
+            'orderId' => $orderId,
+            'itrId' => $itrId,
+            'pan' => $panNumber,
+            'statusStep' => $statusStep,
+            'statusNotes' => $notes ?? '',
+            'professionalId' => $assignedProfessionalId,
+            'notificationReferenceType' => 'status_step',
+            'notificationReferenceId' => $refId,
+        ]);
+    }
+} catch (Throwable $e) {
+    error_log('[update_status_step] notification failed: ' . $e->getMessage());
+}
+
 http_response_code(200);
 echo json_encode([
     "status" => "success",

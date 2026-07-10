@@ -6,6 +6,7 @@ header("Content-Type: application/json");
 
 require '../include/config.php';
 require '../phpjwt/Token.php';
+require_once '../include/NotificationDispatcher.php';
 
 // Only POST allowed
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -197,6 +198,13 @@ foreach ($documents as $doc) {
         exit;
     }
 }
+
+$documentCount = is_array($documents) ? count($documents) : 0;
+notifyWorkflowEvent($conn, 'documents.uploaded', [
+    'userId' => $UserId,
+    'pan' => $PanNumber,
+    'documentCount' => $documentCount,
+]);
 
 echo json_encode([
     "status" => "success",

@@ -33,8 +33,9 @@ if (!file_exists('../phpjwt/Token.php')) {
 
 // Try-catch for fatal errors
 try {
-    require '../include/config.php';
-    require '../phpjwt/Token.php';
+require '../include/config.php';
+require '../phpjwt/Token.php';
+require_once '../include/NotificationDispatcher.php';
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
@@ -315,6 +316,14 @@ if ($checkResult->num_rows > 0) {
         }
         
         http_response_code(200);
+        notifyWorkflowEvent($conn, 'personal_info.submitted', [
+            'userId' => $UserId,
+            'clientName' => trim("$firstName $lastName"),
+            'email' => $email,
+            'pan' => $panNumber,
+            'financialYear' => $financialYear,
+            'packageName' => $packageName ?? 'Selected package',
+        ]);
         echo json_encode([
             "status" => "success",
             "statusCode" => 200,
@@ -361,6 +370,14 @@ if ($conn->query($sql) === TRUE) {
     }
     
     http_response_code(201);
+    notifyWorkflowEvent($conn, 'personal_info.submitted', [
+        'userId' => $UserId,
+        'clientName' => trim("$firstName $lastName"),
+        'email' => $email,
+        'pan' => $panNumber,
+        'financialYear' => $financialYear,
+        'packageName' => $packageName ?? 'Selected package',
+    ]);
     echo json_encode([
         "status" => "success",
         "statusCode" => 201,

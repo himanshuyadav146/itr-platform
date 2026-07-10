@@ -14,6 +14,8 @@ import ITRDetailPage from '../pages/ITRDetailPage';
 import ProfessionalsPage from '../pages/ProfessionalsPage';
 import PackagesPage from '../pages/PackagesPage';
 import PackageFormPage from '../pages/PackageFormPage';
+import NotificationTemplatesPage from '../pages/NotificationTemplatesPage';
+import NotificationTemplateFormPage from '../pages/NotificationTemplateFormPage';
 import DeleteAccountPage from '../pages/DeleteAccountPage';
 import NotFoundPage from '../pages/NotFoundPage';
 
@@ -100,6 +102,23 @@ export const AppRoutes = () => {
         element={
           <PrivateRoute allowedRoles={[UserRole.ADMIN]}>
             <PackageFormPage />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/notification-templates"
+        element={
+          <PrivateRoute allowedRoles={[UserRole.ADMIN]}>
+            <NotificationTemplatesPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/notification-templates/:id"
+        element={
+          <PrivateRoute allowedRoles={[UserRole.ADMIN]}>
+            <NotificationTemplateFormPage />
           </PrivateRoute>
         }
       />

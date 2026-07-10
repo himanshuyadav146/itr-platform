@@ -15,6 +15,7 @@ try {
     require '../include/config.php';
     require '../phpjwt/Token.php';
     require '../itr_status/StatusHelper.php';
+    require_once '../include/NotificationDispatcher.php';
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
@@ -258,6 +259,17 @@ if ($conn->query($updateSql)) {
     if (isset($statusStepUpdated) && !$statusStepUpdated) {
         $responseData["warning"] = "Payment recorded but status step could not be saved. Your order status may still show correctly from payment data.";
     }
+
+    if ($dbStatus === 'success') {
+        notifyWorkflowEvent($conn, 'payment.success', [
+            'userId' => $userId,
+            'orderId' => $orderId,
+            'pan' => $panNumber ?? ($payment['pan_number'] ?? ''),
+            'amount' => $updatedPayment['grand_total'] ?? ($payment['grand_total'] ?? ''),
+            'itrId' => $itrId,
+        ]);
+    }
+
     http_response_code(200);
     echo json_encode([
         "status" => "success",

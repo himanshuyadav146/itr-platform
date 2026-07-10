@@ -1,0 +1,23 @@
+<?php
+/**
+ * Email (SMTP) configuration for transactional notifications.
+ *
+ * SETUP (free options):
+ * 1. Gmail: enable 2FA → App Password → use smtp.gmail.com:587
+ * 2. Zoho Mail: use your domain mailbox SMTP settings
+ *
+ * Copy to notification_config.php (never commit notification_config.php)
+ */
+
+$notification_email_enabled = true;
+
+$notification_smtp_host = 'smtp.gmail.com';
+$notification_smtp_port = 587;
+$notification_smtp_secure = 'tls'; // tls or ssl
+$notification_smtp_username = 'your-email@gmail.com';
+$notification_smtp_password = 'your-app-password';
+$notification_from_email = 'your-email@gmail.com';
+$notification_from_name = 'FinApp';
+
+// Optional overrides (else loaded from notification_settings table)
+// $notification_admin_email = 'finnextgen2026@gmail.com';

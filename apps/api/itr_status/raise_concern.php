@@ -279,6 +279,58 @@ if ($conn->query($insertConcernSql)) {
     $concernSql = "SELECT * FROM itr_order_concerns WHERE id = $concernId";
     $concernResult = $conn->query($concernSql);
     $concern = $concernResult->fetch_assoc();
+
+    try {
+        require_once '../include/NotificationDispatcher.php';
+
+        $panForNotify = '';
+        if ($itrIdEscaped) {
+            $itrPanSql = "SELECT panNumber FROM itr_detail WHERE id = $itrIdEscaped LIMIT 1";
+            $itrPanResult = $conn->query($itrPanSql);
+            if ($itrPanResult && $itrPanResult->num_rows > 0) {
+                $panForNotify = $itrPanResult->fetch_assoc()['panNumber'] ?? '';
+            }
+        } elseif ($orderIdEscaped) {
+            $panSql = "SELECT pan_number FROM payment_info WHERE order_id = '$orderIdEscaped' LIMIT 1";
+            $panResult = $conn->query($panSql);
+            if ($panResult && $panResult->num_rows > 0) {
+                $panForNotify = $panResult->fetch_assoc()['pan_number'] ?? '';
+            }
+        }
+
+        $assignedProfessionalId = null;
+        if ($itrIdEscaped) {
+            $profColumn = 'professional_id';
+            $colResult = $conn->query("SHOW COLUMNS FROM itr_assignments WHERE Field IN ('assigned_to', 'professional_id')");
+            if ($colResult) {
+                while ($colRow = $colResult->fetch_assoc()) {
+                    if ($colRow['Field'] === 'assigned_to') {
+                        $profColumn = 'assigned_to';
+                        break;
+                    }
+                }
+            }
+            $assignSql = "SELECT $profColumn AS prof_id FROM itr_assignments WHERE itr_id = $itrIdEscaped LIMIT 1";
+            $assignResult = $conn->query($assignSql);
+            if ($assignResult && $assignResult->num_rows > 0) {
+                $assignedProfessionalId = (int) ($assignResult->fetch_assoc()['prof_id'] ?? 0);
+            }
+        }
+
+        notifyWorkflowEvent($conn, 'concern.raised', [
+            'userId' => $userId,
+            'orderId' => $orderId,
+            'itrId' => $itrIdEscaped,
+            'pan' => $panForNotify,
+            'statusStep' => $statusStep,
+            'concernText' => $concernText ?? 'Image concern uploaded',
+            'professionalId' => $assignedProfessionalId ?: null,
+            'notificationReferenceType' => 'concern_id',
+            'notificationReferenceId' => (string) $concernId,
+        ]);
+    } catch (Throwable $e) {
+        error_log('[raise_concern] notification failed: ' . $e->getMessage());
+    }
     
     http_response_code(200);
     echo json_encode([

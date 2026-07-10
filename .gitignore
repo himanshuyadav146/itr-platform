@@ -55,6 +55,7 @@ local_settings.php
 apps/api/include/config.php
 apps/api/include/payment_config.php
 apps/api/include/firebase_config.php
+apps/api/include/notification_config.php
 apps/api/include/*.local.php
 
 # SSL / keys / certificates

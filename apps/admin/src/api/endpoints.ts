@@ -46,5 +46,8 @@ export const API_ENDPOINTS = {
   PACKAGES: '/package/getPackages.php',
   PACKAGE_ADD: '/package/addPackage.php',
   PACKAGE_DELETE: '/package/deletePackage.php',
+
+  // Notifications
+  NOTIFICATION_TEMPLATES: '/admin/notification_templates.php',
 } as const;
 
