@@ -6,6 +6,15 @@ Future<T?> showCoreBottomSheet<T>(
   required Widget child,
   List<Widget>? actions,
 }) {
+  if (!context.mounted) {
+    return Future<T?>.value();
+  }
+
+  final navigator = Navigator.maybeOf(context, rootNavigator: true);
+  if (navigator == null) {
+    return Future<T?>.value();
+  }
+
   final scheme = Theme.of(context).colorScheme;
   return showModalBottomSheet<T>(
     context: context,
@@ -48,7 +57,9 @@ Future<T?> showCoreBottomSheet<T>(
                     ],
                   ),
                 ),
-              Flexible(child: child),
+              // Do not use Flexible here — Column is mainAxisSize.min (unbounded)
+              // and Flexible would throw a layout error.
+              child,
               if (actions != null && actions.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),

@@ -10,6 +10,7 @@ import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/config/strings/app_strings.dart';
 import 'package:tax_client/core/constant/api_constants.dart';
+import 'package:tax_client/core/services/analytics/analytics_service.dart';
 import 'package:tax_client/core/utils/web_content_navigation.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_provider.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_state.dart';
@@ -432,6 +433,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                 );
                                 return;
                               }
+                              AnalyticsService.logCtaClick(
+                                ctaName:
+                                    AnalyticsService.ctaSignupCreateAccount,
+                                screenName: 'signup',
+                              );
                               ref
                                   .read(authViewModelProvider.notifier)
                                   .register(
@@ -456,7 +462,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () => context.go('/login'),
+                            onPressed: () {
+                              AnalyticsService.logCtaClick(
+                                ctaName: AnalyticsService.ctaSignupGoToLogin,
+                                screenName: 'signup',
+                              );
+                              context.go('/login');
+                            },
                             style: TextButton.styleFrom(
                               foregroundColor: AppColors.authHeading,
                               padding: EdgeInsets.zero,

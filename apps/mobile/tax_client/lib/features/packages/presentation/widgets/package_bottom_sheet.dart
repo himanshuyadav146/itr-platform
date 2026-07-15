@@ -11,11 +11,12 @@ Future<PackageModel?> showPackageBottomSheet(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  final result = await Navigator.of(context).push<PackageModel>(
-    MaterialPageRoute(
-      fullscreenDialog: true,
-      builder: (context) => const PackageSelectionScreen(),
-    ),
+  final result = await showModalBottomSheet<PackageModel>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => const PackageSelectionScreen(),
   );
 
   if (result != null) {
@@ -42,7 +43,8 @@ class _PackageSelectionScreenState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final packagesState = ref.read(packagesProvider);
-      if (!packagesState.hasValue && !packagesState.isLoading) {
+      // Fetch whenever we have no usable list (covers stuck initial loading).
+      if (!packagesState.hasValue) {
         ref.read(packagesProvider.notifier).getPackages();
       }
     });
@@ -129,112 +131,144 @@ class _PackageSelectionScreenState
   @override
   Widget build(BuildContext context) {
     final packagesAsync = ref.watch(packagesProvider);
+    final sheetHeight = MediaQuery.sizeOf(context).height * 0.92;
 
-    return Scaffold(
-      backgroundColor: AppColors.authBackground,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [AppColors.authBackground, Color(0xFF11182A)],
-          ),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              _PackageSelectionHeader(
-                onClose: () => Navigator.of(context).maybePop(),
+    return SizedBox(
+      height: sheetHeight,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: Scaffold(
+          backgroundColor: AppColors.authBackground,
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [AppColors.authBackground, Color(0xFF11182A)],
               ),
-              Expanded(
-                child: packagesAsync.when(
-                  data: (packages) {
-                    final selectedPackage = _resolveSelectedPackage(packages);
-
-                    return Column(
-                      children: [
-                        Expanded(
-                          child: CustomScrollView(
-                            slivers: [
-                              SliverPadding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  AppSpacing.lg,
-                                  AppSpacing.sm,
-                                  AppSpacing.lg,
-                                  0,
-                                ),
-                                sliver: SliverToBoxAdapter(
-                                  child: _PackageIntroCard(
-                                    packageCount: packages.length,
-                                  ),
-                                ),
-                              ),
-                              SliverPadding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  AppSpacing.lg,
-                                  AppSpacing.lg,
-                                  AppSpacing.lg,
-                                  0,
-                                ),
-                                sliver: SliverList.separated(
-                                  itemCount: packages.length,
-                                  itemBuilder: (context, index) {
-                                    final package = packages[index];
-                                    final selectedId = selectedPackage?.id;
-                                    final isSelected = selectedId == package.id;
-
-                                    return _PackagePlanCard(
-                                      package: package,
-                                      accent: _getColorFromString(package.color),
-                                      icon: _getIconFromString(package.icon),
-                                      isSelected: isSelected,
-                                      descriptionHtml: _packageDescriptionHtml(
-                                        package.description,
-                                      ),
-                                      onTap: () {
-                                        setState(() {
-                                          _selectedIndex = index;
-                                        });
-                                      },
-                                    );
-                                  },
-                                  separatorBuilder: (context, index) =>
-                                      const SizedBox(height: AppSpacing.md),
-                                ),
-                              ),
-                              const SliverPadding(
-                                padding: EdgeInsets.fromLTRB(
-                                  AppSpacing.lg,
-                                  AppSpacing.lg,
-                                  AppSpacing.lg,
-                                  AppSpacing.xxxl,
-                                ),
-                                sliver: SliverToBoxAdapter(
-                                  child: _PricingNoteCard(),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        _PackageSelectionFooter(
-                          selectedPackage: selectedPackage,
-                          onContinue: selectedPackage == null
-                              ? null
-                              : () => Navigator.of(context).pop(selectedPackage),
-                        ),
-                      ],
-                    );
-                  },
-                  loading: () => const _PackageSelectionLoadingState(),
-                  error: (error, stackTrace) => _PackageSelectionErrorState(
-                    message: error.toString(),
-                    onRetry: () =>
-                        ref.read(packagesProvider.notifier).getPackages(),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  // Drag handle for bottom-sheet affordance
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.authMuted.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                   ),
-                ),
+                  _PackageSelectionHeader(
+                    onClose: () => Navigator.of(context).maybePop(),
+                  ),
+                  Expanded(
+                    child: packagesAsync.when(
+                      skipLoadingOnReload: true,
+                      skipLoadingOnRefresh: true,
+                      data: (packages) {
+                        final selectedPackage =
+                            _resolveSelectedPackage(packages);
+
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: CustomScrollView(
+                                slivers: [
+                                  SliverPadding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      AppSpacing.lg,
+                                      AppSpacing.sm,
+                                      AppSpacing.lg,
+                                      0,
+                                    ),
+                                    sliver: SliverToBoxAdapter(
+                                      child: _PackageIntroCard(
+                                        packageCount: packages.length,
+                                      ),
+                                    ),
+                                  ),
+                                  SliverPadding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      AppSpacing.lg,
+                                      AppSpacing.lg,
+                                      AppSpacing.lg,
+                                      0,
+                                    ),
+                                    sliver: SliverList.separated(
+                                      itemCount: packages.length,
+                                      itemBuilder: (context, index) {
+                                        final package = packages[index];
+                                        final selectedId = selectedPackage?.id;
+                                        final isSelected =
+                                            selectedId == package.id;
+
+                                        return _PackagePlanCard(
+                                          package: package,
+                                          accent: _getColorFromString(
+                                            package.color,
+                                          ),
+                                          icon: _getIconFromString(
+                                            package.icon,
+                                          ),
+                                          isSelected: isSelected,
+                                          descriptionHtml:
+                                              _packageDescriptionHtml(
+                                            package.description,
+                                          ),
+                                          onTap: () {
+                                            setState(() {
+                                              _selectedIndex = index;
+                                            });
+                                          },
+                                        );
+                                      },
+                                      separatorBuilder: (context, index) =>
+                                          const SizedBox(
+                                            height: AppSpacing.md,
+                                          ),
+                                    ),
+                                  ),
+                                  const SliverPadding(
+                                    padding: EdgeInsets.fromLTRB(
+                                      AppSpacing.lg,
+                                      AppSpacing.lg,
+                                      AppSpacing.lg,
+                                      AppSpacing.xxxl,
+                                    ),
+                                    sliver: SliverToBoxAdapter(
+                                      child: _PricingNoteCard(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            _PackageSelectionFooter(
+                              selectedPackage: selectedPackage,
+                              onContinue: selectedPackage == null
+                                  ? null
+                                  : () => Navigator.of(context)
+                                      .pop(selectedPackage),
+                            ),
+                          ],
+                        );
+                      },
+                      loading: () => const _PackageSelectionLoadingState(),
+                      error: (error, stackTrace) =>
+                          _PackageSelectionErrorState(
+                        message: error.toString(),
+                        onRetry: () =>
+                            ref.read(packagesProvider.notifier).getPackages(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

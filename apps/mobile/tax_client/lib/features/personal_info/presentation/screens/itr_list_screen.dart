@@ -72,22 +72,16 @@ class _ItrListScreenState extends ConsumerState<ItrListScreen> {
   Future<PackageModel?> _ensurePackageSelected({
     ItrPersonalDetailModel? itrItem,
   }) async {
-    final existingSelection = ref.read(selectedPackageProvider);
-    if (existingSelection != null) {
-      return existingSelection;
-    }
-
+    // Prefill selection from this ITR (if any) so the sheet highlights it.
     if (itrItem != null) {
-      final syncedSelection = await _syncSelectedPackageFromItr(itrItem);
-      if (syncedSelection != null) {
-        return syncedSelection;
-      }
+      await _syncSelectedPackageFromItr(itrItem);
     }
 
     if (!mounted) {
       return null;
     }
 
+    // Always show package selection so the user can confirm or change package.
     return showPackageBottomSheet(context, ref);
   }
 
