@@ -14,6 +14,7 @@ import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/constant/api_constants.dart';
 import 'package:tax_client/core/config/app_router.dart';
 import 'package:tax_client/core/network/token_storage.dart';
+import 'package:tax_client/core/services/analytics/analytics_service.dart';
 import 'package:tax_client/core/utils/error_handler.dart';
 import 'package:tax_client/core/utils/web_content_navigation.dart';
 import 'package:tax_client/features/home/domain/dashboard_mode.dart';
@@ -89,6 +90,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     BuildContext context,
     JourneyType journeyType,
   ) async {
+    AnalyticsService.logCtaClick(
+      ctaName: journeyType == JourneyType.EVerify
+          ? AnalyticsService.ctaHomeEVerify
+          : AnalyticsService.ctaHomeFileItr,
+      screenName: 'home',
+    );
+
     ref.read(journeyTypeProvider.notifier).state = journeyType;
 
     final tokenStorage = ref.read(tokenStorageProvider);
@@ -110,22 +118,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
           selectedPackage = packagesState.value!.firstWhere(
             (pkg) => pkg.id == "7",
           );
+          ref.read(selectedPackageProvider.notifier).state = selectedPackage;
         } catch (_) {
-          selectedPackage = null;
+          // Keep whatever is already selected for sheet pre-highlight.
         }
       }
-    }
 
-    if (selectedPackage == null) {
+      // E-Verify still lets the user confirm/change package.
       if (!context.mounted) return;
       selectedPackage = await showPackageBottomSheet(context, ref);
+      if (selectedPackage == null) {
+        return;
+      }
+      ref.read(selectedPackageProvider.notifier).state = selectedPackage;
     }
-
-    if (selectedPackage == null) {
-      return;
-    }
-
-    ref.read(selectedPackageProvider.notifier).state = selectedPackage;
+    // File ITR: skip package sheet — go straight to ITR list / new filing.
 
     if (!context.mounted) return;
 
@@ -157,6 +164,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
   }
 
   void _openContactUs(BuildContext context) {
+    AnalyticsService.logCtaClick(
+      ctaName: AnalyticsService.ctaHomeContactSupport,
+      screenName: 'home',
+    );
     openWebContent(
       context,
       path: ApiConstants.itrContactUS,
@@ -165,14 +176,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
   }
 
   void _openOrders(BuildContext context) {
+    AnalyticsService.logCtaClick(
+      ctaName: AnalyticsService.ctaHomeOrders,
+      screenName: 'home',
+    );
     context.go('/orders');
   }
 
   void _openTaxCalculator(BuildContext context) {
+    AnalyticsService.logCtaClick(
+      ctaName: AnalyticsService.ctaHomeTaxCalculator,
+      screenName: 'home',
+    );
     context.push('/tax_calculator');
   }
 
   void _openStatus(BuildContext context, HomeDashboardSnapshot snapshot) {
+    AnalyticsService.logCtaClick(
+      ctaName: AnalyticsService.ctaHomeStatus,
+      screenName: 'home',
+    );
     final focusItr = snapshot.focusItr;
     if (focusItr != null) {
       final focusOrder = snapshot.focusOrder;
@@ -238,45 +261,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     context.push('/personal_info', extra: focusItr);
   }
 
-  Future<int?> _resolvePaymentPackageId(
-    ItrPersonalDetailModel focusItr,
-    AsyncValue<List<PackageModel>> packagesAsync, {
-    PackageModel? fallbackPackage,
-  }) async {
-    if (focusItr.packageId != null) {
-      return focusItr.packageId;
-    }
-
-    await _syncPackageFromItr(focusItr, packagesAsync);
-    final synced = ref.read(selectedPackageProvider) ?? fallbackPackage;
-    if (synced != null) {
-      return int.tryParse(synced.id);
-    }
-
-    final packageName = focusItr.packageName?.trim();
-    if (packageName == null || packageName.isEmpty) {
-      return null;
-    }
-
-    var packages = packagesAsync.valueOrNull;
-    if (packages == null) {
-      await ref.read(packagesProvider.notifier).getPackages();
-      packages = ref.read(packagesProvider).valueOrNull;
-    }
-    if (packages == null) {
-      return null;
-    }
-
-    for (final package in packages) {
-      if (package.name.trim().toLowerCase() == packageName.toLowerCase()) {
-        ref.read(selectedPackageProvider.notifier).state = package;
-        return int.tryParse(package.id);
-      }
-    }
-
-    return null;
-  }
-
   Future<void> _openPaymentForFocus(
     BuildContext context,
     HomeDashboardSnapshot snapshot,
@@ -310,22 +294,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     await ref.read(tokenStorageProvider).savePanNumber(pan);
     await _syncPackageFromItr(focusItr, packagesAsync);
 
-    final selectedPackage = ref.read(selectedPackageProvider);
-    var packageId = await _resolvePaymentPackageId(
-      focusItr,
-      packagesAsync,
-      fallbackPackage: selectedPackage,
-    );
-
-    if (packageId == null && context.mounted) {
-      final picked = await showPackageBottomSheet(context, ref);
-      if (picked != null) {
-        packageId = int.tryParse(picked.id);
-      }
-    }
-
+    // Always allow confirming/changing package before payment.
     if (!context.mounted) return;
+    final picked = await showPackageBottomSheet(context, ref);
+    if (picked == null || !context.mounted) return;
 
+    final packageId = int.tryParse(picked.id);
     if (packageId == null) {
       ErrorHandler.showError(
         context,
@@ -334,6 +308,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
       return;
     }
 
+    AnalyticsService.logCtaClick(
+      ctaName: AnalyticsService.ctaHomePayment,
+      screenName: 'home',
+    );
     context.push('/payment?packageId=$packageId');
   }
 
@@ -382,6 +360,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     await _syncPackageFromItr(latestFiling, packagesAsync);
 
     if (!context.mounted) return;
+    AnalyticsService.logCtaClick(
+      ctaName: AnalyticsService.ctaHomeDocuments,
+      screenName: 'home',
+    );
     context.push('/document_upload');
   }
 
@@ -451,7 +433,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
         accent: AppColors.authHeading,
         progress: packagesCount == null ? 0.2 : 0.8,
         actionLabel: 'Pick a Package',
-        onTap: () async => showPackageBottomSheet(context, ref),
+        onTap: () async {
+          AnalyticsService.logCtaClick(
+            ctaName: AnalyticsService.ctaHomePackages,
+            screenName: 'home',
+          );
+          await showPackageBottomSheet(context, ref);
+        },
       ),
     ];
 

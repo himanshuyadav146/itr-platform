@@ -10,6 +10,7 @@ import 'package:tax_client/core/common/widgets/no_internet_sheet.dart';
 import 'package:tax_client/core/config/router_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:tax_client/core/network/token_storage.dart';
@@ -25,6 +26,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // Analytics must never block or crash app startup.
+  try {
+    await FirebaseAnalytics.instance
+        .setAnalyticsCollectionEnabled(true)
+        .timeout(const Duration(seconds: 2));
+  } catch (e) {
+    debugPrint('Analytics enable skipped: $e');
+  }
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -53,9 +63,14 @@ class MyApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     ref.listen<DateTime?>(noInternetNotifierProvider, (prev, next) {
-      if (next != null) {
-        showNoInternetSheet(context);
-      }
+      if (next == null) return;
+      // Defer to after this frame so we never present UI during listen/build,
+      // and always use the router navigator (never MyApp's parent context).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final navContext = AppRouter.navigatorKey.currentContext;
+        if (navContext == null || !navContext.mounted) return;
+        showNoInternetSheet(navContext);
+      });
     });
 
     ref.listen<bool>(logoutNotifierProvider, (prev, next) {

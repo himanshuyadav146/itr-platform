@@ -8,6 +8,7 @@ import 'package:tax_client/core/common/widgets/primary_button.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/config/strings/app_strings.dart';
+import 'package:tax_client/core/services/analytics/analytics_service.dart';
 import 'package:tax_client/core/utils/error_handler.dart';
 import 'package:tax_client/core/utils/field_validators.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_provider.dart';
@@ -44,6 +45,11 @@ class _ForgetPasswordScreenState extends ConsumerState<ForgetPasswordScreen> {
       ErrorHandler.showError(context, AppStrings.passwordMismatch);
       return;
     }
+
+    AnalyticsService.logCtaClick(
+      ctaName: AnalyticsService.ctaForgotPasswordSubmit,
+      screenName: 'forgot_password',
+    );
 
     ref.read(authViewModelProvider.notifier).forgetPassword(
           _emailController.text,

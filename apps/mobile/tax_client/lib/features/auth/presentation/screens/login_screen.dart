@@ -9,6 +9,7 @@ import 'package:tax_client/core/common/widgets/primary_button.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/config/strings/app_strings.dart';
+import 'package:tax_client/core/services/analytics/analytics_service.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_provider.dart';
 import 'package:tax_client/features/auth/presentation/providers/auth_state.dart';
 
@@ -139,7 +140,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         letterSpacing: 1.2,
                       ),
                       trailing: TextButton(
-                        onPressed: () => context.push('/forgot-password'),
+                        onPressed: () {
+                          AnalyticsService.logCtaClick(
+                            ctaName: AnalyticsService.ctaLoginForgotPassword,
+                            screenName: 'login',
+                          );
+                          context.push('/forgot-password');
+                        },
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.authAmber,
                           padding: EdgeInsets.zero,
@@ -259,6 +266,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onPressed: (authState is AuthLoading || !_isFormValid)
                           ? null
                           : () {
+                              AnalyticsService.logCtaClick(
+                                ctaName: AnalyticsService.ctaLoginAuthenticate,
+                                screenName: 'login',
+                              );
                               ref.read(authViewModelProvider.notifier).login(
                                     _emailController.text.trim(),
                                     _passwordController.text.trim(),
@@ -285,7 +296,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             textAlign: TextAlign.center,
                           ),
                           TextButton(
-                            onPressed: () => context.push('/register'),
+                            onPressed: () {
+                              AnalyticsService.logCtaClick(
+                                ctaName: AnalyticsService.ctaLoginGoToSignup,
+                                screenName: 'login',
+                              );
+                              context.push('/register');
+                            },
                             style: TextButton.styleFrom(
                               foregroundColor: AppColors.authMint,
                               padding: EdgeInsets.zero,
