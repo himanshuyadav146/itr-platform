@@ -27,7 +27,8 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.finapp.com"
-    compileSdk = 35
+    // Google Play requires target API 36+ from Aug 31, 2026.
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -46,7 +47,7 @@ android {
         // API 21 for Play device catalog (~2,135 extra devices vs Flutter default 24).
         // Expression form avoids Flutter 3.44 minSdk migrator rewriting literal "21".
         minSdk = 14 + 7
-        targetSdk = 35
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
