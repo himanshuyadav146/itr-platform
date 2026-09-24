@@ -117,12 +117,35 @@ class PaymentHelper {
      * @param float $gstPercentage GST percentage (default 18)
      * @return array Payment breakdown with subtotal, GST, grand_total, and fee_items
      */
-    public static function calculatePaymentBreakdown($conn, $packageId = null, $gstPercentage = 18) {
+    public static function calculatePaymentBreakdown($conn, $packageId = null, $gstPercentage = 18, $associateId = null, $serviceId = null) {
         $subtotal = 0;
         $feeItems = [];
+        $quotedFee = null;
+
+        // Named-associate marketplace: listed fee from DB (never client-supplied amount).
+        $associateId = $associateId ? (int)$associateId : 0;
+        $serviceId = $serviceId ? (int)$serviceId : 0;
+        if ($associateId > 0 && $serviceId > 0) {
+            $helperPath = dirname(__DIR__) . '/include/AssociateHelper.php';
+            if (file_exists($helperPath)) {
+                require_once $helperPath;
+                if (class_exists('AssociateHelper') && AssociateHelper::isApprovedAssociate($conn, $associateId)) {
+                    $listed = AssociateHelper::getListedFee($conn, $associateId, $serviceId);
+                    if ($listed) {
+                        $quotedFee = floatval($listed['listed_fee']);
+                        $subtotal += $quotedFee;
+                        $feeItems[] = [
+                            'name' => ($listed['service_name'] ?: 'Associate service') . ' (associate fee)',
+                            'amount' => $quotedFee,
+                            'type' => 'associate_fee'
+                        ];
+                    }
+                }
+            }
+        }
         
-        // Get package price if package ID provided
-        if ($packageId) {
+        // Package fallback for older orders / journeys that still pick a package.
+        if ($quotedFee === null && $packageId) {
             $packageId = mysqli_real_escape_string($conn, $packageId);
             $packageSql = "SELECT id, packagename, price FROM itr_packages WHERE id = '$packageId' AND isActive = 1";
             $packageResult = $conn->query($packageSql);
@@ -161,7 +184,10 @@ class PaymentHelper {
             'gst_percentage' => $gstPercentage,
             'gst_amount' => $gstAmount,
             'grand_total' => round($grandTotal, 2),
-            'fee_items' => $feeItems
+            'fee_items' => $feeItems,
+            'quoted_fee' => $quotedFee,
+            'associate_id' => $associateId > 0 ? $associateId : null,
+            'service_id' => $serviceId > 0 ? $serviceId : null,
         ];
     }
     

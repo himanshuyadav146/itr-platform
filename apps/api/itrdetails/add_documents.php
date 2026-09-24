@@ -35,6 +35,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $file = $_FILES['file'];
+    if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+        $uploadErrors = [
+            UPLOAD_ERR_INI_SIZE => 'Uploaded file exceeds server upload_max_filesize',
+            UPLOAD_ERR_FORM_SIZE => 'Uploaded file exceeds MAX_FILE_SIZE limit',
+            UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
+            UPLOAD_ERR_NO_FILE => 'No file was uploaded',
+            UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder on server',
+            UPLOAD_ERR_CANT_WRITE => 'Failed to write uploaded file to disk',
+            UPLOAD_ERR_EXTENSION => 'File upload stopped by extension',
+        ];
+        $errCode = (int)$file['error'];
+        $errMessage = $uploadErrors[$errCode] ?? 'Unknown upload error';
+        echo json_encode([
+            "status" => "error",
+            "statusCode" => 400,
+            "data" => [
+                "message" => "File upload error: " . $errMessage,
+                "uploadErrorCode" => $errCode
+            ]
+        ]);
+        http_response_code(400);
+        exit;
+    }
     $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $allowedTypes = ['jpg', 'jpeg', 'png', 'pdf'];
 

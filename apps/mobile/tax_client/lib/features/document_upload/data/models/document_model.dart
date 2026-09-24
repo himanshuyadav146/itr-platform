@@ -10,6 +10,7 @@ class DocumentModel {
   final String? filePath;
   final String fileType;
   final String? uploadedAt;
+  final String? filePassword;
 
   DocumentModel({
     this.docId,
@@ -18,6 +19,7 @@ class DocumentModel {
     this.filePath,
     required this.fileType,
     this.uploadedAt,
+    this.filePassword,
   });
 
   factory DocumentModel.fromJson(Map<String, dynamic> json) {
@@ -37,6 +39,7 @@ class DocumentModel {
       filePath: json['downloadUrl'] as String?,
       fileType: fileType,
       uploadedAt: json['createdAt'] as String?,
+      filePassword: json['filePassword'] as String?,
     );
   }
 
@@ -48,6 +51,7 @@ class DocumentModel {
       'filePath': filePath,
       'fileType': fileType,
       'uploadedAt': uploadedAt,
+      'filePassword': filePassword,
     };
   }
 }

@@ -57,7 +57,7 @@ class ItrStatusStepModel {
   final String? completedAt;
   final bool? hasConcern;
   final String? notes;
-  final String? concern;
+  final StatusConcernModel? concern;
 
   ItrStatusStepModel({
     this.step,
@@ -74,6 +74,30 @@ class ItrStatusStepModel {
       _$ItrStatusStepModelFromJson(json);
 
   Map<String, dynamic> toJson() => _$ItrStatusStepModelToJson(this);
+}
+
+@JsonSerializable()
+class StatusConcernModel {
+  final int? id;
+  final String? type;
+  final String? message;
+  final String? status;
+  final String? createdAt;
+  final String? imageUrl;
+
+  StatusConcernModel({
+    this.id,
+    this.type,
+    this.message,
+    this.status,
+    this.createdAt,
+    this.imageUrl,
+  });
+
+  factory StatusConcernModel.fromJson(Map<String, dynamic> json) =>
+      _$StatusConcernModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$StatusConcernModelToJson(this);
 }
 
 @JsonSerializable()

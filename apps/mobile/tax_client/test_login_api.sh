@@ -18,7 +18,7 @@ fi
 # Test 2: Check if server is reachable
 echo ""
 echo "Test 2: Checking if server is reachable..."
-if curl -s --head http://allindiaitr.in | head -n 1 | grep "HTTP" > /dev/null; then
+if curl -s --head https://allindiaitr.in | head -n 1 | grep "HTTP" > /dev/null; then
     echo "✅ Server is reachable"
 else
     echo "❌ Server is not reachable"
@@ -31,7 +31,7 @@ echo "Test 3: Testing login API..."
 echo "Email: himanshu123@yopmail.com"
 echo "Password: 12345678"
 
-response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST http://allindiaitr.in/api/auth/login.php \
+response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST https://allindiaitr.in/api/auth/login.php \
   -H "Content-Type: application/json" \
   -d '{"email":"himanshu123@yopmail.com","password":"12345678"}')
 
@@ -55,7 +55,7 @@ fi
 echo ""
 echo "========================================" 
 echo "Test 4: Testing packages API..."
-response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" http://allindiaitr.in/api/package/getPackages.php)
+response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" https://allindiaitr.in/api/package/getPackages.php)
 
 http_status=$(echo "$response" | grep "HTTP_STATUS" | cut -d: -f2)
 body=$(echo "$response" | sed '/HTTP_STATUS/d')

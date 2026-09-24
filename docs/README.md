@@ -12,6 +12,8 @@ Central reference for the monorepo. Use this index when working on any app so yo
 | Know request/response shapes for any API | [API_CONTRACT.md](./API_CONTRACT.md) |
 | Trace a user journey (mobile or admin) | [WORKFLOWS.md](./WORKFLOWS.md) |
 | Build or update mobile UI from Figma | [FIGMA.md](./FIGMA.md) + [SCREEN_API_MAP.md](./SCREEN_API_MAP.md) |
+| Start a safe mobile UI refactor | [projects/MOBILE_UI_REFACTOR_ANALYSIS.md](./projects/MOBILE_UI_REFACTOR_ANALYSIS.md) |
+| Review the first mobile screen refactor step | [projects/MOBILE_STEP2_LOGIN_ANALYSIS.md](./projects/MOBILE_STEP2_LOGIN_ANALYSIS.md) |
 | Set up local / staging / production | [ENVIRONMENTS.md](./ENVIRONMENTS.md) |
 | Work on the Flutter app | [projects/MOBILE.md](./projects/MOBILE.md) |
 | Work on the PHP API | [projects/API.md](./projects/API.md) |
@@ -35,6 +37,8 @@ itr-platform/
 │   ├── SCREEN_API_MAP.md     # Screen → API mapping (mobile + admin)
 │   └── projects/
 │       ├── MOBILE.md
+│       ├── MOBILE_UI_REFACTOR_ANALYSIS.md
+│       ├── MOBILE_STEP2_LOGIN_ANALYSIS.md
 │       ├── API.md
 │       └── ADMIN.md
 ├── apps/
@@ -50,7 +54,7 @@ itr-platform/
 ## Documentation principles
 
 1. **Shared docs live in `docs/`** — cross-cutting architecture, contracts, workflows.
-2. **App-specific deep dives in `docs/projects/`** — routes, features, file paths, commands.
+2. **App-specific deep dives in `docs/projects/`** — routes, features, file paths, commands, refactor audits.
 3. **Legacy detailed docs in `apps/*/`** — older curl guides, deployment notes; linked from project docs where relevant.
 4. **When adding a new screen or API** — update `SCREEN_API_MAP.md` and `API_CONTRACT.md`.
 

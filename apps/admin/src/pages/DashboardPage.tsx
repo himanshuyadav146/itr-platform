@@ -14,11 +14,12 @@ import {
   Description as DescriptionIcon,
   CheckCircle as CheckCircleIcon,
   Pending as PendingIcon,
+  Paid as PaidIcon,
 } from '@mui/icons-material';
-import { ITRStatus } from '../types/enums';
+import { ITRDisplayStatus } from '../types/enums';
 import type { ITRWithDetails } from '../types/itr';
 
-type FilterType = 'all' | 'assigned' | 'filed' | 'pending';
+type FilterType = 'all' | 'pending' | 'paid' | 'in_progress' | 'completed';
 
 const DashboardPage = () => {
   const { isAuthenticated } = useAuth();
@@ -32,24 +33,24 @@ const DashboardPage = () => {
     retry: false,
   });
 
-  // Fetch ITRs from API
   const { data: itrsData, isLoading: itrsLoading } = useQuery({
     queryKey: ['itrs'],
-    queryFn: () => itrApi.getITRs(),
+    queryFn: () => itrApi.getITRs({ limit: 100 }),
     enabled: isAuthenticated,
   });
 
   const allITRs = itrsData?.items || [];
 
-  // Filter ITRs based on selected filter
   const getFilteredITRs = (): ITRWithDetails[] => {
     switch (selectedFilter) {
-      case 'assigned':
-        return allITRs.filter((itr) => itr.status === ITRStatus.ASSIGNED);
-      case 'filed':
-        return allITRs.filter((itr) => itr.status === ITRStatus.FILED);
       case 'pending':
-        return allITRs.filter((itr) => itr.status === ITRStatus.PENDING);
+        return allITRs.filter((itr) => itr.status === ITRDisplayStatus.PENDING);
+      case 'paid':
+        return allITRs.filter((itr) => itr.status === ITRDisplayStatus.PAID);
+      case 'in_progress':
+        return allITRs.filter((itr) => itr.status === ITRDisplayStatus.IN_PROGRESS);
+      case 'completed':
+        return allITRs.filter((itr) => itr.status === ITRDisplayStatus.COMPLETED);
       default:
         return allITRs;
     }
@@ -57,10 +58,18 @@ const DashboardPage = () => {
 
   const filteredITRs = getFilteredITRs();
 
-  // Count ITRs by status
-  const assignedCount = allITRs.filter((itr) => itr.status === ITRStatus.ASSIGNED).length;
-  const filedCount = allITRs.filter((itr) => itr.status === ITRStatus.FILED).length;
-  const pendingCount = allITRs.filter((itr) => itr.status === ITRStatus.PENDING).length;
+  const pendingCount = allITRs.filter((itr) => itr.status === ITRDisplayStatus.PENDING).length;
+  const paidCount = allITRs.filter((itr) => itr.status === ITRDisplayStatus.PAID).length;
+  const inProgressCount = allITRs.filter((itr) => itr.status === ITRDisplayStatus.IN_PROGRESS).length;
+  const completedCount = allITRs.filter((itr) => itr.status === ITRDisplayStatus.COMPLETED).length;
+
+  const filterTitles: Record<FilterType, string> = {
+    all: 'All ITRs',
+    pending: 'Pending ITRs',
+    paid: 'Paid ITRs',
+    in_progress: 'In Progress ITRs',
+    completed: 'Completed ITRs',
+  };
 
   const handleITRClick = (itr: ITRWithDetails) => {
     navigate(`/itrs/${itr.id}`);
@@ -85,7 +94,6 @@ const DashboardPage = () => {
   return (
     <DashboardLayout>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {/* Page Header */}
         <Box className="fade-in">
           <Typography
             variant="h4"
@@ -101,11 +109,10 @@ const DashboardPage = () => {
             Dashboard
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Welcome back! Here's an overview of your ITR management.
+            Welcome back! Here&apos;s an overview of your ITR management.
           </Typography>
         </Box>
 
-        {/* KPI Cards */}
         <Box
           className="slide-in-left"
           sx={{
@@ -113,48 +120,49 @@ const DashboardPage = () => {
             gridTemplateColumns: {
               xs: '1fr',
               sm: 'repeat(2, 1fr)',
-              md: 'repeat(3, 1fr)',
+              md: 'repeat(4, 1fr)',
             },
             gap: 3,
           }}
         >
           <KPICard
-            title="Assigned ITRs"
-            value={formatNumber(assignedCount)}
-            icon={<DescriptionIcon sx={{ fontSize: 32 }} />}
-            color="info"
-            onClick={() => setSelectedFilter('assigned')}
-            selected={selectedFilter === 'assigned'}
-          />
-          <KPICard
-            title="Filed ITRs"
-            value={formatNumber(filedCount)}
-            icon={<CheckCircleIcon sx={{ fontSize: 32 }} />}
-            color="success"
-            onClick={() => setSelectedFilter('filed')}
-            selected={selectedFilter === 'filed'}
-          />
-          <KPICard
-            title="Pending ITRs"
+            title="Pending"
             value={formatNumber(pendingCount)}
             icon={<PendingIcon sx={{ fontSize: 32 }} />}
             color="warning"
             onClick={() => setSelectedFilter('pending')}
             selected={selectedFilter === 'pending'}
           />
+          <KPICard
+            title="Paid"
+            value={formatNumber(paidCount)}
+            icon={<PaidIcon sx={{ fontSize: 32 }} />}
+            color="info"
+            onClick={() => setSelectedFilter('paid')}
+            selected={selectedFilter === 'paid'}
+          />
+          <KPICard
+            title="In Progress"
+            value={formatNumber(inProgressCount)}
+            icon={<DescriptionIcon sx={{ fontSize: 32 }} />}
+            color="secondary"
+            onClick={() => setSelectedFilter('in_progress')}
+            selected={selectedFilter === 'in_progress'}
+          />
+          <KPICard
+            title="Completed"
+            value={formatNumber(completedCount)}
+            icon={<CheckCircleIcon sx={{ fontSize: 32 }} />}
+            color="success"
+            onClick={() => setSelectedFilter('completed')}
+            selected={selectedFilter === 'completed'}
+          />
         </Box>
 
-        {/* ITR Grid Section */}
         <Box className="fade-in">
           <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h5" sx={{ fontWeight: 600 }}>
-              {selectedFilter === 'all'
-                ? 'All ITRs'
-                : selectedFilter === 'assigned'
-                  ? 'Assigned ITRs'
-                  : selectedFilter === 'filed'
-                    ? 'Filed ITRs'
-                    : 'Pending ITRs'}
+              {filterTitles[selectedFilter]}
             </Typography>
             {selectedFilter !== 'all' && (
               <Typography
@@ -163,9 +171,7 @@ const DashboardPage = () => {
                   color: 'primary.main',
                   cursor: 'pointer',
                   fontWeight: 600,
-                  '&:hover': {
-                    textDecoration: 'underline',
-                  },
+                  '&:hover': { textDecoration: 'underline' },
                 }}
                 onClick={() => setSelectedFilter('all')}
               >

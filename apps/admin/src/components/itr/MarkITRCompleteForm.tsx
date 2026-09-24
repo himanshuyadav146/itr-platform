@@ -6,6 +6,7 @@ import {
   Paper,
   Alert,
   CircularProgress,
+  Typography,
 } from '@mui/material';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,6 +17,8 @@ import type { ITRWithDetails } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../store/hooks';
 import { addNotification } from '../../store/slices/uiSlice';
+import { isCompletedStatus } from '../../utils/itrStatus';
+import { StatusChip } from '../common/StatusChip';
 
 const markCompleteSchema = z.object({
   acknowledgementNumber: z.string().min(1, 'Acknowledgement number is required'),
@@ -47,6 +50,8 @@ export const MarkITRCompleteForm = ({ itr }: MarkITRCompleteFormProps) => {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
   const backendItrId = itr.itrId || itr.id;
+  const alreadyCompleted = isCompletedStatus(itr.status);
+  const existingAck = itr.acknowledgement_number?.trim();
 
   const {
     register,
@@ -61,16 +66,15 @@ export const MarkITRCompleteForm = ({ itr }: MarkITRCompleteFormProps) => {
   });
 
   const submitMutation = useMutation({
-    mutationFn: (data: MarkCompleteFormData) => {
-      return itrApi.submitAcknowledgement({
+    mutationFn: (data: MarkCompleteFormData) =>
+      itrApi.submitAcknowledgement({
         itrId: backendItrId,
         acknowledgementNumber: data.acknowledgementNumber.trim(),
         acknowledgementDate: formatAcknowledgementDate(),
         remarks: data.remarks?.trim() || '',
         itrForm: 'ITR-1',
         assessmentYear: getAssessmentYear(itr),
-      });
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['itr', itr.id] });
       queryClient.invalidateQueries({ queryKey: ['itrs'] });
@@ -81,12 +85,44 @@ export const MarkITRCompleteForm = ({ itr }: MarkITRCompleteFormProps) => {
           type: 'success',
         })
       );
-      navigate('/itrs');
+      navigate(`/itrs/${itr.id}`);
     },
-    onError: (err: any) => {
-      setError(err.response?.data?.data?.message || err.response?.data?.message || 'Failed to submit acknowledgement');
+    onError: (err: unknown) => {
+      const apiErr = err as { response?: { data?: { data?: { message?: string }; message?: string } } };
+      setError(
+        apiErr.response?.data?.data?.message ||
+          apiErr.response?.data?.message ||
+          'Failed to submit acknowledgement'
+      );
     },
   });
+
+  if (alreadyCompleted && existingAck) {
+    return (
+      <Paper sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Typography variant="h6">ITR Completed</Typography>
+          <StatusChip status="COMPLETED" size="medium" />
+        </Box>
+        <Alert severity="success" sx={{ mb: 2 }}>
+          This ITR has been marked complete. The acknowledgement number is visible on the dashboard,
+          ITR list, and detail page.
+        </Alert>
+        <TextField
+          label="Acknowledgement Number"
+          value={existingAck}
+          fullWidth
+          margin="normal"
+          InputProps={{ readOnly: true }}
+        />
+        <Box sx={{ mt: 3 }}>
+          <Button variant="outlined" onClick={() => navigate(`/itrs/${itr.id}`)}>
+            Back to Details
+          </Button>
+        </Box>
+      </Paper>
+    );
+  }
 
   return (
     <Paper sx={{ p: 3 }}>
@@ -95,6 +131,11 @@ export const MarkITRCompleteForm = ({ itr }: MarkITRCompleteFormProps) => {
           {error}
         </Alert>
       )}
+
+      <Alert severity="warning" sx={{ mb: 2 }}>
+        Acknowledgement number is <strong>required</strong> to mark this ITR as completed. Once
+        submitted, it will appear across the admin panel and on the client mobile app.
+      </Alert>
 
       <Box component="form" onSubmit={handleSubmit((data) => submitMutation.mutate(data))}>
         <TextField
@@ -126,11 +167,7 @@ export const MarkITRCompleteForm = ({ itr }: MarkITRCompleteFormProps) => {
             variant="contained"
             disabled={isSubmitting || submitMutation.isPending}
           >
-            {submitMutation.isPending ? (
-              <CircularProgress size={24} />
-            ) : (
-              'Submit'
-            )}
+            {submitMutation.isPending ? <CircularProgress size={24} /> : 'Submit & Mark Completed'}
           </Button>
           <Button variant="outlined" onClick={() => navigate(`/itrs/${itr.id}`)}>
             Cancel

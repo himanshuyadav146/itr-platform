@@ -5,12 +5,16 @@ part 'upload_document_data.g.dart';
 @JsonSerializable()
 class UploadDocumentData {
   final String message;
+  @JsonKey(name: 'fileUrl')
   final String? fileUrl;
+  @JsonKey(name: 'filePath')
+  final String? filePath;
   final String? fileName;
 
   UploadDocumentData({
     required this.message,
     this.fileUrl,
+    this.filePath,
     this.fileName,
   });
 

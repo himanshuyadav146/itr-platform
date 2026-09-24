@@ -1,8 +1,9 @@
 class ApiConstants {
   ApiConstants._();
 
-  /// Base URL for all API requests
-  static const String baseUrl = 'http://allindiaitr.in';
+  /// Base URL for all API requests (production).
+  /// For local dev (emulator): use `http://10.0.2.2` instead.
+  static const String baseUrl = 'https://allindiaitr.in';
   static const String api = '/api';
 
   //https://allindiaitr.in/privacy-policy
@@ -28,6 +29,13 @@ class ApiConstants {
   static const String itrPrivacyPolicy = '/privacy-policy';
   static const String itrContactUS = '/contact-us';
   static const String itrAboutUS = '/about-us';
+  static const String itrTermsAndConditions = '/terms-and-condition';
+
+  /// Full HTTPS URL for a public marketing or policy page path.
+  static String publicPageUrl(String path) {
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    return '$baseUrl$normalizedPath';
+  }
 
   // Package Endpoints
   static const String packageGetPackages = '$api/package/getPackages.php';
@@ -37,4 +45,9 @@ class ApiConstants {
   static const String paymentInitiatePayment = '$api/payment/initiate_payment.php';
   static const String paymentGetPaymentStatus = '$api/payment/get_payment_status.php';
   static const String paymentVerifyPayment = '$api/payment/verify_payment.php';
+
+  static const String associateList = '$api/associates/list.php';
+  static const String associateDetail = '$api/associates/detail.php';
+  static const String associateServices = '$api/associates/services.php';
+  static const String associateSelect = '$api/associates/select.php';
 }

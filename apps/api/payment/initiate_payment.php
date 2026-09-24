@@ -105,6 +105,8 @@ if (!$data) {
 
 $panNumber = $data['panNumber'] ?? null;
 $packageId = $data['packageId'] ?? null;
+$associateId = isset($data['associateId']) ? (int)$data['associateId'] : (isset($data['associate_id']) ? (int)$data['associate_id'] : 0);
+$serviceId = isset($data['serviceId']) ? (int)$data['serviceId'] : (isset($data['service_id']) ? (int)$data['service_id'] : 0);
 
 // Validate mandatory fields
 if (empty($panNumber)) {
@@ -131,6 +133,27 @@ if (!preg_match('/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/', strtoupper($panNumber))) {
 $panNumber = strtoupper($panNumber);
 $panNumberEscaped = mysqli_real_escape_string($conn, $panNumber);
 $userIdEscaped = mysqli_real_escape_string($conn, $userId);
+
+// Resolve associate + service from personal_details when the client already booked one.
+$helperPath = dirname(__DIR__) . '/include/AssociateHelper.php';
+if (file_exists($helperPath)) {
+    require_once $helperPath;
+}
+if (($associateId <= 0 || $serviceId <= 0) && class_exists('AssociateHelper') && AssociateHelper::columnExists($conn, 'personal_details', 'associate_id')) {
+    $pdSql = "SELECT associate_id, service_id FROM personal_details
+              WHERE UserId = '$userIdEscaped' AND PANNumber = '$panNumberEscaped' AND isActive = 1
+              ORDER BY createdAt DESC LIMIT 1";
+    $pdResult = $conn->query($pdSql);
+    if ($pdResult && $pdResult->num_rows > 0) {
+        $pd = $pdResult->fetch_assoc();
+        if ($associateId <= 0 && !empty($pd['associate_id'])) {
+            $associateId = (int)$pd['associate_id'];
+        }
+        if ($serviceId <= 0 && !empty($pd['service_id'])) {
+            $serviceId = (int)$pd['service_id'];
+        }
+    }
+}
 
 // Validate that documents are submitted for the PAN
 $docCheckSql = "SELECT COUNT(*) as doc_count FROM document_details 
@@ -172,7 +195,7 @@ if (!$conn || $conn->connect_error) {
 
 // Calculate payment breakdown
 try {
-    $breakdown = PaymentHelper::calculatePaymentBreakdown($conn, $packageId);
+    $breakdown = PaymentHelper::calculatePaymentBreakdown($conn, $packageId, 18, $associateId, $serviceId);
     
     if (!isset($breakdown['subtotal']) || !isset($breakdown['gst_amount']) || !isset($breakdown['grand_total'])) {
         throw new Exception("Invalid payment breakdown calculation");
@@ -200,6 +223,17 @@ $merchantId = $paymentConfig['merchant_id'];
 $gatewayName = $paymentConfig['gateway'];
 $panNumberValue = "'" . $panNumberEscaped . "'";
 $packageIdValue = $packageId ? mysqli_real_escape_string($conn, $packageId) : "NULL";
+$hasAssociateCol = false;
+$hasQuotedCol = false;
+if (class_exists('AssociateHelper')) {
+    $hasAssociateCol = AssociateHelper::columnExists($conn, 'payment_info', 'associate_id');
+    $hasQuotedCol = AssociateHelper::columnExists($conn, 'payment_info', 'quoted_fee');
+}
+$associateIdValue = $associateId > 0 ? (int)$associateId : 'NULL';
+$serviceIdValue = $serviceId > 0 ? (int)$serviceId : 'NULL';
+$quotedFeeValue = isset($breakdown['quoted_fee']) && $breakdown['quoted_fee'] !== null
+    ? floatval($breakdown['quoted_fee'])
+    : 'NULL';
 
 // Safely escape breakdown values for SQL
 $subtotal = floatval($breakdown['subtotal']);
@@ -227,15 +261,26 @@ if ($gatewayName === 'razorpay' && $grandTotal > 0) {
     $razorpayOrder = PaymentHelper::createRazorpayOrder($orderId, $grandTotal, 'INR');
 }
 
+$extraCols = '';
+$extraVals = '';
+if ($hasAssociateCol) {
+    $extraCols .= ', associate_id, service_id';
+    $extraVals .= ", $associateIdValue, $serviceIdValue";
+}
+if ($hasQuotedCol) {
+    $extraCols .= ', quoted_fee';
+    $extraVals .= ", $quotedFeeValue";
+}
+
 $sql = "INSERT INTO payment_info 
         (payment_id, user_id, package_id, pan_number, order_id, subtotal, gst_percentage, 
          gst_amount, grand_total, currency, payment_status, merchant_id, gateway_name, callback_url, 
-         redirect_url, created_at)
+         redirect_url, created_at $extraCols)
         VALUES 
         ('$paymentIdEscaped', '$userIdEscaped', $packageIdValue, $panNumberValue, '$orderIdEscaped', 
          $subtotal, $gstPercentage, 
          $gstAmount, $grandTotal, 'INR', 'pending', 
-         '$merchantIdEscaped', '$gatewayNameEscaped', '$callbackUrlEscaped', '$redirectUrlEscaped', NOW())";
+         '$merchantIdEscaped', '$gatewayNameEscaped', '$callbackUrlEscaped', '$redirectUrlEscaped', NOW() $extraVals)";
 
 if ($conn->query($sql)) {
     $responseData = [
@@ -253,6 +298,9 @@ if ($conn->query($sql)) {
             "key_id" => $paymentConfig['razorpay_key_id'],
         ],
         "message" => "Payment initiated successfully. Use key_id and redirect_url (or razorpay_order_id) to open gateway checkout.",
+        "associate_id" => $associateId > 0 ? $associateId : null,
+        "service_id" => $serviceId > 0 ? $serviceId : null,
+        "quoted_fee" => $breakdown['quoted_fee'] ?? null,
     ];
     if ($razorpayOrder && !empty($razorpayOrder['razorpay_order_id'])) {
         $responseData["razorpay_order_id"] = $razorpayOrder['razorpay_order_id'];

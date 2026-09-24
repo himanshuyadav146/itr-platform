@@ -1,4 +1,4 @@
-import { ITRStatus } from './enums';
+import { ITRDisplayStatus } from './enums';
 
 export interface ITRDetail {
   id: number;
@@ -6,7 +6,9 @@ export interface ITRDetail {
   userId: number;
   panNumber: string;
   financialYear: string;
-  status: ITRStatus | string;
+  status: ITRDisplayStatus | string;
+  statusDisplayText?: string;
+  hasSuccessfulPayment?: boolean;
   createdAt: string;
   updatedAt: string;
   acknowledgement_number?: string;
@@ -29,7 +31,7 @@ export interface ITRComment {
   itr_id: number;
   commented_by: number;
   comment_text: string;
-  status_enum: ITRStatus;
+  status_enum: string;
   created_at: string;
 }
 
@@ -44,7 +46,7 @@ export interface ITRAssignment {
 }
 
 export interface ITRFilters {
-  status?: ITRStatus;
+  status?: string;
   assignedTo?: number;
   userId?: number;
   dateRange?: {

@@ -103,14 +103,14 @@ if ($method === 'POST') {
     }
     
     // Check if professional exists and has correct role (ACCOUNTANT or CA)
-    $profCheckSql = "SELECT UserId, Role FROM users WHERE UserId = '$professionalIdEscaped' AND Role IN ('ACCOUNTANT', 'CA')";
+    $profCheckSql = "SELECT UserId, Role FROM users WHERE UserId = '$professionalIdEscaped' AND Role IN ('ACCOUNTANT', 'CA', 'TAX_EXPERT')";
     $profCheckResult = $conn->query($profCheckSql);
     if (!$profCheckResult || $profCheckResult->num_rows === 0) {
         http_response_code(404);
         echo json_encode([
             "status" => "error",
             "statusCode" => 404,
-            "data" => ["message" => "Professional not found or doesn't have ACCOUNTANT/CA role"]
+            "data" => ["message" => "Professional not found or doesn't have ACCOUNTANT/CA/TAX_EXPERT role"]
         ]);
         exit;
     }
