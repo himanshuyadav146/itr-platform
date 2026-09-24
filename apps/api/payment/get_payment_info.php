@@ -62,15 +62,21 @@ if (!$userId) {
 // Get parameters
 $panNumber = null;
 $packageId = null;
+$associateId = null;
+$serviceId = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $panNumber = isset($_GET['panNumber']) ? trim($_GET['panNumber']) : null;
     $packageId = isset($_GET['packageId']) ? trim($_GET['packageId']) : null;
+    $associateId = isset($_GET['associateId']) ? (int)$_GET['associateId'] : null;
+    $serviceId = isset($_GET['serviceId']) ? (int)$_GET['serviceId'] : null;
 } else {
     $input = file_get_contents("php://input");
     $data = json_decode($input, true);
     $panNumber = $data['panNumber'] ?? null;
     $packageId = $data['packageId'] ?? null;
+    $associateId = isset($data['associateId']) ? (int)$data['associateId'] : null;
+    $serviceId = isset($data['serviceId']) ? (int)$data['serviceId'] : null;
 }
 
 $userId = mysqli_real_escape_string($conn, $userId);
@@ -150,11 +156,37 @@ if ($packageId) {
     }
 }
 
+$associateDetails = null;
+
 // ============================================
-// Calculate Payment Breakdown (from packages + additional fees)
+// Calculate Payment Breakdown (associate fee preferred, else package)
 // ============================================
-$breakdown = PaymentHelper::calculatePaymentBreakdown($conn, $packageId);
+try {
+    $breakdown = PaymentHelper::calculatePaymentBreakdown($conn, $packageId, 18, $associateId ?: null, $serviceId ?: null);
+} catch (Exception $e) {
+    http_response_code(400);
+    echo json_encode([
+        "status" => "error",
+        "statusCode" => 400,
+        "data" => ["message" => $e->getMessage()]
+    ]);
+    exit;
+}
 $paymentSummary = PaymentHelper::buildPaymentSummary($breakdown);
+
+if (!empty($breakdown['associate'])) {
+    $assoc = $breakdown['associate'];
+    $associateDetails = [
+        "id" => (int)$assoc['UserId'],
+        "name" => $assoc['name'],
+        "role" => $assoc['Role'] ?? '',
+        "serviceId" => (int)$assoc['service_id'],
+        "serviceName" => $assoc['service_name'] ?? '',
+        "fee" => floatval($assoc['quoted_fee'] ?? $assoc['fee']),
+        "city" => $assoc['city'] ?? '',
+        "yearsExperience" => (int)($assoc['years_experience'] ?? 0),
+    ];
+}
 
 // ============================================
 // Gateway Details (dynamic from config – test/live mode)
@@ -188,6 +220,9 @@ $responseData = [
 // Add package details if available
 if ($packageDetails) {
     $responseData['package'] = $packageDetails;
+}
+if ($associateDetails) {
+    $responseData['associate'] = $associateDetails;
 }
 
 http_response_code(200);

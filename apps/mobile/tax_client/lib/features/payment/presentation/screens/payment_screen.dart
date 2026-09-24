@@ -9,6 +9,7 @@ import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/network/token_storage.dart';
 import 'package:tax_client/core/payments/razorpay_service.dart';
+import 'package:tax_client/features/associates/presentation/providers/associate_provider.dart';
 import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
 import 'package:tax_client/features/payment/data/datasources/payment_remote_data_source.dart';
 import 'package:tax_client/features/payment/data/models/payment_info_data.dart';
@@ -17,8 +18,15 @@ import 'package:tax_client/features/payment/data/models/payment_summary_item.dar
 
 class PaymentScreen extends ConsumerStatefulWidget {
   final int packageId;
+  final int? associateId;
+  final int? serviceId;
 
-  const PaymentScreen({super.key, this.packageId = 1});
+  const PaymentScreen({
+    super.key,
+    this.packageId = 1,
+    this.associateId,
+    this.serviceId,
+  });
 
   @override
   ConsumerState<PaymentScreen> createState() => _PaymentScreenState();
@@ -78,7 +86,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       });
 
       final dataSource = ref.read(paymentRemoteDataSourceProvider);
-      final info = await dataSource.getPaymentInfo(widget.packageId);
+      final selectedAssociate = ref.read(selectedAssociateProvider);
+      final associateId = widget.associateId ?? selectedAssociate?.associateId;
+      final serviceId = widget.serviceId ?? selectedAssociate?.serviceId;
+      final info = await dataSource.getPaymentInfo(
+        packageId: associateId != null ? null : widget.packageId,
+        associateId: associateId,
+        serviceId: serviceId,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -153,8 +168,13 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       late final PaymentInitiateResponse initiateResponse;
 
       try {
+        final selectedAssociate = ref.read(selectedAssociateProvider);
+        final associateId = widget.associateId ?? selectedAssociate?.associateId;
+        final serviceId = widget.serviceId ?? selectedAssociate?.serviceId;
         initiateResponse = await dataSource.initiatePayment(
-          packageId: widget.packageId,
+          packageId: associateId != null ? null : widget.packageId,
+          associateId: associateId,
+          serviceId: serviceId,
           panNumber: panNumber,
         );
       } catch (e) {
@@ -252,11 +272,13 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final selectedPackage = ref.watch(selectedPackageProvider);
+    final selectedAssociate = ref.watch(selectedAssociateProvider);
     final info = paymentInfo;
     final grandTotal = _grandTotalItem;
     final regularItems = _regularSummaryItems;
-    final packageLabel =
-        selectedPackage?.name ?? 'Package #${widget.packageId}';
+    final packageLabel = selectedAssociate != null
+        ? '${selectedAssociate.associateName} · ${selectedAssociate.serviceName}'
+        : selectedPackage?.name ?? 'Package #${widget.packageId}';
 
     return CoreScaffold(
       includeAppBar: false,

@@ -12,6 +12,7 @@ import UserDetailPage from '../pages/UserDetailPage';
 import ITRsPage from '../pages/ITRsPage';
 import ITRDetailPage from '../pages/ITRDetailPage';
 import ProfessionalsPage from '../pages/ProfessionalsPage';
+import MyProfilePage from '../pages/MyProfilePage';
 import PackagesPage from '../pages/PackagesPage';
 import PackageFormPage from '../pages/PackageFormPage';
 import DeleteAccountPage from '../pages/DeleteAccountPage';
@@ -75,6 +76,15 @@ export const AppRoutes = () => {
         element={
           <PrivateRoute>
             <ProfessionalsPage />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/profile"
+        element={
+          <PrivateRoute>
+            <MyProfilePage />
           </PrivateRoute>
         }
       />

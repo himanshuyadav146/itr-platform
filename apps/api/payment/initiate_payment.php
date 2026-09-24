@@ -105,6 +105,9 @@ if (!$data) {
 
 $panNumber = $data['panNumber'] ?? null;
 $packageId = $data['packageId'] ?? null;
+$associateId = isset($data['associateId']) ? (int)$data['associateId'] : (isset($data['associate_id']) ? (int)$data['associate_id'] : null);
+$serviceId = isset($data['serviceId']) ? (int)$data['serviceId'] : (isset($data['service_id']) ? (int)$data['service_id'] : null);
+$quotedFee = isset($data['quotedFee']) ? floatval($data['quotedFee']) : null;
 
 // Validate mandatory fields
 if (empty($panNumber)) {
@@ -172,7 +175,7 @@ if (!$conn || $conn->connect_error) {
 
 // Calculate payment breakdown
 try {
-    $breakdown = PaymentHelper::calculatePaymentBreakdown($conn, $packageId);
+    $breakdown = PaymentHelper::calculatePaymentBreakdown($conn, $packageId, 18, $associateId, $serviceId, $quotedFee);
     
     if (!isset($breakdown['subtotal']) || !isset($breakdown['gst_amount']) || !isset($breakdown['grand_total'])) {
         throw new Exception("Invalid payment breakdown calculation");
@@ -200,6 +203,14 @@ $merchantId = $paymentConfig['merchant_id'];
 $gatewayName = $paymentConfig['gateway'];
 $panNumberValue = "'" . $panNumberEscaped . "'";
 $packageIdValue = $packageId ? mysqli_real_escape_string($conn, $packageId) : "NULL";
+$associateIdValue = $associateId ? (int)$associateId : "NULL";
+$serviceIdValue = $serviceId ? (int)$serviceId : "NULL";
+$quotedFeeValue = "NULL";
+if (!empty($breakdown['associate']['quoted_fee'])) {
+    $quotedFeeValue = floatval($breakdown['associate']['quoted_fee']);
+} elseif ($quotedFee !== null) {
+    $quotedFeeValue = floatval($quotedFee);
+}
 
 // Safely escape breakdown values for SQL
 $subtotal = floatval($breakdown['subtotal']);
@@ -228,11 +239,11 @@ if ($gatewayName === 'razorpay' && $grandTotal > 0) {
 }
 
 $sql = "INSERT INTO payment_info 
-        (payment_id, user_id, package_id, pan_number, order_id, subtotal, gst_percentage, 
+        (payment_id, user_id, package_id, associate_id, service_id, quoted_fee, pan_number, order_id, subtotal, gst_percentage, 
          gst_amount, grand_total, currency, payment_status, merchant_id, gateway_name, callback_url, 
          redirect_url, created_at)
         VALUES 
-        ('$paymentIdEscaped', '$userIdEscaped', $packageIdValue, $panNumberValue, '$orderIdEscaped', 
+        ('$paymentIdEscaped', '$userIdEscaped', $packageIdValue, $associateIdValue, $serviceIdValue, $quotedFeeValue, $panNumberValue, '$orderIdEscaped', 
          $subtotal, $gstPercentage, 
          $gstAmount, $grandTotal, 'INR', 'pending', 
          '$merchantIdEscaped', '$gatewayNameEscaped', '$callbackUrlEscaped', '$redirectUrlEscaped', NOW())";

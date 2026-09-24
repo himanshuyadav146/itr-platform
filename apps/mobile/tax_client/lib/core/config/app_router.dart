@@ -21,6 +21,9 @@ import 'package:tax_client/features/status/presentation/screens/status_screen.da
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import 'package:tax_client/core/common/screens/web_content_screen.dart';
 import 'package:tax_client/core/services/analytics/analytics_service.dart';
+import 'package:tax_client/features/associates/presentation/screens/service_list_screen.dart';
+import 'package:tax_client/features/associates/presentation/screens/associate_list_screen.dart';
+import 'package:tax_client/features/associates/presentation/screens/associate_detail_screen.dart';
 
 class AppRouter {
   static GoRouter? _router;
@@ -92,6 +95,32 @@ class AppRouter {
           },
         ),
         GoRoute(
+          path: '/services',
+          name: 'services',
+          builder: (BuildContext context, GoRouterState state) {
+            return const ServiceListScreen();
+          },
+        ),
+        GoRoute(
+          path: '/associates',
+          name: 'associates',
+          builder: (BuildContext context, GoRouterState state) {
+            final serviceIdStr = state.uri.queryParameters['serviceId'];
+            final serviceId = serviceIdStr != null ? int.tryParse(serviceIdStr) : null;
+            return AssociateListScreen(serviceId: serviceId);
+          },
+        ),
+        GoRoute(
+          path: '/associates/:id',
+          name: 'associate_detail',
+          builder: (BuildContext context, GoRouterState state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            final serviceIdStr = state.uri.queryParameters['serviceId'];
+            final serviceId = serviceIdStr != null ? int.tryParse(serviceIdStr) : null;
+            return AssociateDetailScreen(associateId: id, serviceId: serviceId);
+          },
+        ),
+        GoRoute(
           path: '/personal_info',
           name: 'personal_info',
           builder: (BuildContext context, GoRouterState state) {
@@ -137,7 +166,17 @@ class AppRouter {
             final packageId = packageIdStr != null
                 ? int.tryParse(packageIdStr) ?? 1
                 : 1;
-            return PaymentScreen(packageId: packageId);
+            final associateId = int.tryParse(
+              state.uri.queryParameters['associateId'] ?? '',
+            );
+            final serviceId = int.tryParse(
+              state.uri.queryParameters['serviceId'] ?? '',
+            );
+            return PaymentScreen(
+              packageId: packageId,
+              associateId: associateId,
+              serviceId: serviceId,
+            );
           },
         ),
         GoRoute(

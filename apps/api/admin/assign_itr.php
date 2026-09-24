@@ -103,7 +103,7 @@ if ($method === 'POST') {
     }
     
     // Check if professional exists and has correct role (ACCOUNTANT or CA)
-    $profCheckSql = "SELECT UserId, Role FROM users WHERE UserId = '$professionalIdEscaped' AND Role IN ('ACCOUNTANT', 'CA')";
+    $profCheckSql = "SELECT UserId, Role FROM users WHERE UserId = '$professionalIdEscaped' AND Role IN ('ACCOUNTANT', 'CA', 'TAX_EXPERT')";
     $profCheckResult = $conn->query($profCheckSql);
     if (!$profCheckResult || $profCheckResult->num_rows === 0) {
         http_response_code(404);

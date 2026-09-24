@@ -97,7 +97,12 @@ export const Header = () => {
               horizontal: 'right',
             }}
           >
-            <MenuItem onClick={handleMenuClose}>
+            <MenuItem
+              onClick={() => {
+                handleMenuClose();
+                navigate('/profile');
+              }}
+            >
               <AccountCircle sx={{ mr: 1 }} />
               Profile
             </MenuItem>

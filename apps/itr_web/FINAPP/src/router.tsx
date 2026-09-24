@@ -12,6 +12,10 @@ import Packages from './pages/Packages';
 import PersonalDetails from './pages/PersonalDetails';
 import DocumentUpload from './pages/DocumentUpload';
 import Payment from './pages/Payment';
+import AssociateRegister from './pages/AssociateRegister';
+import Services from './pages/Services';
+import Associates from './pages/Associates';
+import AssociateDetail from './pages/AssociateDetail';
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -50,6 +54,22 @@ export const router = createBrowserRouter([
       {
         path: '/packages',
         element: <Packages />,
+      },
+      {
+        path: '/services',
+        element: <Services />,
+      },
+      {
+        path: '/associates',
+        element: <Associates />,
+      },
+      {
+        path: '/associates/:id',
+        element: <AssociateDetail />,
+      },
+      {
+        path: '/associate-register',
+        element: <AssociateRegister />,
       },
       {
         path: '/personal-details',

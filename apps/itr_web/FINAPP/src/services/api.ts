@@ -326,6 +326,15 @@ export const packagesApi = {
   getPackages: () => apiGet<any>(apiUrl.getPackages),
 };
 
+export const associatesApi = {
+  getServices: () => apiGet<any>(apiUrl.getServices),
+  list: (params?: Record<string, any>) => apiGet<any>(apiUrl.getAssociates, { params }),
+  detail: (id: string | number) => apiGet<any>(apiUrl.getAssociateDetail, { params: { id } }),
+  select: (data: { associateId: number; serviceId: number; panNumber?: string }) =>
+    apiPost<any>(apiUrl.selectAssociate, data),
+  register: (data: Record<string, unknown>) => apiPost<any>(apiUrl.registerAssociate, data),
+};
+
 export const uploadFormData = async (
   endpoint: string,
   formData: FormData,

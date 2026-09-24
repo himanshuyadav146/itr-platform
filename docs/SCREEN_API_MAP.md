@@ -14,11 +14,14 @@ Quick reference: which APIs each screen needs. **Use this first** when building 
 | `/forgot-password` | ForgetPasswordScreen | — | `POST /auth/forget_password.php` | `authViewModelProvider` |
 | `/` | HomeScreen | `GET /package/getPackages.php` | — | `packagesProvider`, `journeyTypeProvider` |
 | `/` | HomeScreen (File ITR) | `GET /get_itrbyuser.php` | — | `personalInfoViewModelProvider` |
+| `/services` | ServiceListScreen | `GET /associates/services.php` | — | `catalogServicesProvider` |
+| `/associates` | AssociateListScreen | `GET /associates/list.php` | — | `associatesListProvider` |
+| `/associates/:id` | AssociateDetailScreen | `GET /associates/detail.php` | Select stores fee | `selectedAssociateProvider` |
 | — | PackageBottomSheet | (uses `packagesProvider`) | — | `selectedPackageProvider` |
 | `/itr_list` | ItrListScreen | `GET /get_itrbyuser.php` | — | `personalInfoViewModelProvider` |
 | `/personal_info` | PersonalInformationScreen | `GET /itrdetails/get_personal_detail.php` | `POST /itrdetails/add_personal_details.php` | `personalInfoViewModelProvider` |
 | `/document_upload` | UploadDocumentsScreen | `GET /itrdetails/get_documents.php` | `POST /itrdetails/add_documents.php`, `save_documents.php`, `delete_document.php` | `documentUploadViewModelProvider` |
-| `/payment` | PaymentScreen | `GET /payment/get_payment_info.php?packageId=` | `POST /payment/initiate_payment.php`, `verify_payment.php` | Payment screen state + Razorpay |
+| `/payment` | PaymentScreen | `GET /payment/get_payment_info.php?associateId=&serviceId=` | `POST /payment/initiate_payment.php`, `verify_payment.php` | Payment screen state + Razorpay |
 | `/status` | StatusScreen | `GET /itr_status/get_detailed_status.php` | — | `statusViewModelProvider` |
 | `/orders` | OrdersScreen | `GET /itr_status/get_user_orders.php` | — | `ordersViewModelProvider` |
 | `/more` | MoreScreen | — | `POST /auth/delete_account.php` (delete) | `logoutNotifierProvider` |
@@ -42,7 +45,8 @@ Quick reference: which APIs each screen needs. **Use this first** when building 
 | Route | Page | APIs on load | APIs on action |
 |-------|------|--------------|----------------|
 | `/login` | LoginPage | — | `POST /auth/login.php` |
-| `/register` | RegisterPage | — | `POST /auth/register_professional.php` |
+| `/register` | RegisterPage | — | `POST /auth/register_associate.php` |
+| `/profile` | MyProfilePage | `GET /associates/profile.php`, `GET /associates/my_services.php` | `PUT /associates/profile.php`, `PUT /associates/my_services.php` |
 | `/forgot-password` | ForgotPasswordPage | — | *(not wired yet)* |
 | `/delete-account` | DeleteAccountPage | — | `POST /auth/delete_account.php` |
 | `/dashboard` | DashboardPage | `GET /admin/dashboard.php` | — |
@@ -55,11 +59,23 @@ Quick reference: which APIs each screen needs. **Use this first** when building 
 | `/itrs/:id` (assign) | — | `GET /admin/users.php?role=CA` | `POST /admin/assign_itr.php` |
 | `/itrs/:id` (status) | — | — | `PUT /admin/update_status_step.php` |
 | `/itrs/:id` (ack) | — | — | `POST /admin/submit_acknowledgement.php` |
-| `/professionals` | ProfessionalsPage | `GET /admin/users.php?role=ACCOUNTANT\|CA` | — |
+| `/professionals` | ProfessionalsPage | `GET /admin/associates.php` | `PUT /admin/associates.php` (approve/reject/unlist) |
 | `/packages` | PackagesPage | `GET /package/getPackages.php` | — |
 | `/packages/new` | PackageFormPage | — | `POST /package/addPackage.php` |
 | `/packages/:id` | PackageFormPage (edit) | `GET /package/getPackages.php` | `POST /package/addPackage.php` |
 | `/packages` (delete) | — | — | `POST /package/deletePackage.php` |
+
+## Website screens
+
+| Route | Screen | APIs on load | APIs on action |
+|-------|--------|--------------|----------------|
+| `/associate-register` | AssociateRegister | — | `POST /auth/register_associate.php` |
+| `/services` | Services | `GET /associates/services.php` | — |
+| `/associates` | Associates | `GET /associates/list.php` | — |
+| `/associates/:id` | AssociateDetail | `GET /associates/detail.php` | Select stores fee in Redux |
+| `/personal-details` | PersonalDetails | `GET /itrdetails/get_personal_detail.php` | `POST /itrdetails/add_personal_details.php` |
+| `/documents` | DocumentUpload | `GET /itrdetails/get_documents.php` | upload/save/delete documents |
+| `/payment` | Payment | `GET /payment/get_payment_info.php` | `POST /payment/initiate_payment.php`, `verify_payment.php` |
 
 ---
 
@@ -69,15 +85,17 @@ Use when implementing a **complete user flow** from scratch.
 
 ### Mobile: File ITR
 
-- [ ] `GET /package/getPackages.php` — package selection
+- [ ] `GET /associates/services.php` — service catalog
+- [ ] `GET /associates/list.php?serviceId=` — listed associates
+- [ ] `GET /associates/detail.php?id=` — profile + fees
 - [ ] `GET /get_itrbyuser.php` — route to list vs new form
-- [ ] `POST /itrdetails/add_personal_details.php` — personal info
+- [ ] `POST /itrdetails/add_personal_details.php` — personal info (`associateId`, `serviceId`)
 - [ ] `GET /itrdetails/get_documents.php` — load existing docs
 - [ ] `POST /itrdetails/add_documents.php` — upload files
 - [ ] `POST /itrdetails/save_documents.php` — save metadata
-- [ ] `GET /payment/get_payment_info.php` — payment summary
-- [ ] `POST /payment/initiate_payment.php` — Razorpay order
-- [ ] `POST /payment/verify_payment.php` — confirm payment
+- [ ] `GET /payment/get_payment_info.php` — payment summary from associate fee
+- [ ] `POST /payment/initiate_payment.php` — Razorpay order (snapshots `quoted_fee`)
+- [ ] `POST /payment/verify_payment.php` — verify + auto-assign ITR to associate
 - [ ] `GET /itr_status/get_detailed_status.php` — status timeline
 
 ### Mobile: Auth
@@ -135,6 +153,7 @@ Use when implementing a **complete user flow** from scratch.
 | Client | File |
 |--------|------|
 | Mobile | `apps/mobile/tax_client/lib/core/constant/api_constants.dart` |
+| Website | `apps/itr_web/FINAPP/src/config/baseUrlConstant.ts` |
 | Admin | `apps/admin/src/api/endpoints.ts` |
 | API (server) | `apps/api/{module}/*.php` |
 

@@ -6,13 +6,17 @@ header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
 
 require '../include/config.php';
+require_once __DIR__ . '/../associates/AssociateHelper.php';
 
 // Check if the request method is POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    // Get the raw POST data
-    $input = file_get_contents("php://input");
-    $data = json_decode($input, true); 
+    // Allow register_associate.php to pass a pre-parsed body (php://input can be read once).
+    $data = $GLOBALS['signup_preparsed_data'] ?? null;
+    if (!is_array($data)) {
+        $input = file_get_contents("php://input");
+        $data = json_decode($input, true);
+    } 
 
     // Check: email is required
     if (!isset($data['email']) || empty(trim($data['email']))) {
@@ -87,14 +91,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $platform = mysqli_real_escape_string($conn, $data['platform'] ?? 'web');
     $version = mysqli_real_escape_string($conn, $data['version'] ?? '1.0');
     
-    // Handle Role - validate against ENUM values.
-    // Accept role/Role, and map legacy occupation from admin register screen.
-    $validRoles = ['CLIENT', 'ADMIN', 'ACCOUNTANT', 'CA', 'TAX_EXPERT'];
+    // Public signup may never create ADMIN. Only CLIENT or associate roles.
+    $publicRoles = ['CLIENT', 'ACCOUNTANT', 'CA', 'TAX_EXPERT'];
     $roleRaw = $data['role'] ?? ($data['Role'] ?? ($data['occupation'] ?? null));
     $role = $roleRaw ? strtoupper(trim($roleRaw)) : 'CLIENT';
-    
-    // Validate Role - if invalid, default to CLIENT
-    if (!in_array($role, $validRoles)) {
+    if ($role === 'ADMIN' || !in_array($role, $publicRoles, true)) {
         $role = 'CLIENT';
     }
     
@@ -109,12 +110,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ('$firstName', '$middleName', '$lastName', '$email', '$mobile', '$password', '$role', '$currentDateTime', '$platform', '$version')";
 
     if ($conn->query($sql) === TRUE) {
+        $newUserId = (int)$conn->insert_id;
+        if (AssociateHelper::isAssociateRole($role) && $newUserId > 0) {
+            AssociateHelper::createPendingProfile($conn, $newUserId);
+        }
 
         $response = [
             "statusCode" => 201,
             "status" => "success",
             "data"=>[
-            "message" => "User registered successfully"
+            "message" => "User registered successfully",
+            "userId" => $newUserId,
+            "role" => $role
             ]
         ];
         http_response_code(201); // 201 Created

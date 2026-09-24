@@ -6,12 +6,13 @@ System design for the ITR Platform monorepo — how the three apps connect, shar
 
 ## High-level overview
 
-The ITR Platform is a **monorepo** with one shared PHP backend and two frontend clients:
+The ITR Platform is a **monorepo** with one shared PHP backend and three frontend clients:
 
 ```mermaid
 flowchart TB
   subgraph clients [Client Applications]
     Mobile["Mobile App\nFlutter — FinApp"]
+    Website["Website\nReact — FinApp"]
     Admin["Admin Panel\nReact + Vite"]
   end
 
@@ -27,6 +28,7 @@ flowchart TB
   end
 
   Mobile -->|HTTPS JSON| API
+  Website -->|HTTPS JSON| API
   Admin -->|HTTPS JSON| API
   API --> MySQL
   API --> Uploads
@@ -38,6 +40,7 @@ flowchart TB
 | Layer | Technology | Location |
 |-------|------------|----------|
 | Mobile client | Flutter 3.8+, Riverpod, GoRouter | `apps/mobile/tax_client` |
+| Website client | React, Vite, Tailwind, Redux | `apps/itr_web/FINAPP` |
 | Admin client | React 19, TypeScript, Vite, MUI, Redux | `apps/admin` |
 | API server | PHP 7.4+, Apache, mysqli | `apps/api` |
 | Database | MySQL 5.7+ (`itr_services`) | XAMPP / cPanel |
@@ -54,7 +57,8 @@ itr-platform/
 │   ├── mobile/
 │   │   └── tax_client/          # Flutter app (package: tax_client)
 │   ├── api/                     # PHP REST API (served at /api)
-│   └── admin/                   # React SPA (served at /admin/)
+│   ├── admin/                   # React SPA (served at /admin/)
+│   └── itr_web/FINAPP/          # Public website (FinApp)
 ├── docs/                        # Shared platform documentation
 ├── scripts/                     # Dev utilities (XAMPP permissions)
 └── .github/workflows/           # CI/CD (optional, later)
@@ -77,7 +81,8 @@ itr-platform/
 | **itrdetails** | `itrdetails/` | Personal details, document upload/download, user journey |
 | **itr_status** | `itr_status/` | Order status, detailed timeline, concerns |
 | **payment** | `payment/` | Razorpay/Paytm initiate, verify, webhook, history |
-| **package** | `package/` | ITR pricing packages (CRUD) |
+| **associates** | `associates/` | Marketplace catalog, associate profile/fees, public list/detail |
+| **package** | `package/` | ITR pricing packages (legacy; new checkouts use associate fees) |
 | **admin** | `admin/` | Dashboard, users, ITRs, assignments, analytics, notifications |
 | **include** | `include/` | Shared config, CORS, FCM/payment config |
 | **phpjwt** | `phpjwt/` | Custom JWT sign/verify |
@@ -110,12 +115,14 @@ From `setup_database.sql`:
 | Table | Purpose |
 |-------|---------|
 | `users` | Accounts (email, password, role, platform) |
-| `services` | Service types |
-| `personal_details` | ITR personal info per user/PAN |
+| `services` | Bookable catalog (ITR Filing, E-Verify, GST, Consultation) |
+| `associate_profiles` | Associate bio, city, license, approval/listing |
+| `associate_service_fees` | Per-associate per-service listed fee |
+| `personal_details` | ITR personal info per user/PAN; `associate_id` / `service_id` |
 | `document_details` | Document metadata |
 | `itr_detail` | ITR records |
 | `itr_source` | ITR source tracking |
-| `itr_packages` | Pricing packages |
+| `itr_packages` | Legacy platform prices (old orders) |
 
 Additional tables from migrations: `payment_info`, `user_fcm_tokens`, `notifications`, assignment tables, dynamic status system. See [projects/API.md](./projects/API.md).
 

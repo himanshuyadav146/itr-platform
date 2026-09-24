@@ -25,6 +25,8 @@ class AddPersonalDetails implements UseCase<String, AddPersonalDetailsParams> {
       country: params.country,
       journeyType: params.journeyType,
       packageId: params.packageId,
+      associateId: params.associateId,
+      serviceId: params.serviceId,
     );
     return await repository.addPersonalDetails(request);
   }
@@ -44,6 +46,8 @@ class AddPersonalDetailsParams {
   final String country;
   final String journeyType;
   final int? packageId;
+  final int? associateId;
+  final int? serviceId;
 
   AddPersonalDetailsParams({
     required this.panNumber,
@@ -59,5 +63,7 @@ class AddPersonalDetailsParams {
     required this.country,
     required this.journeyType,
     this.packageId,
+    this.associateId,
+    this.serviceId,
   });
 }

@@ -236,6 +236,9 @@ if ($conn->query($updateSql)) {
         if (!$statusStepUpdated) {
             error_log("[verify_payment] Failed to update itr_order_status for order_id=$orderIdEscaped user_id=$userId: " . ($conn->error ?? 'unknown'));
         }
+
+        require_once __DIR__ . '/../associates/AssociateHelper.php';
+        AssociateHelper::assignOnPaymentSuccess($conn, $userId, $payment);
     }
     
     // Fetch updated payment record

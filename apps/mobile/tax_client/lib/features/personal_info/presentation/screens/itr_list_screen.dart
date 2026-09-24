@@ -9,6 +9,7 @@ import 'package:tax_client/core/config/strings/app_strings.dart';
 import 'package:tax_client/core/config/theme/app_colors.dart';
 import 'package:tax_client/core/config/theme/app_spacing.dart';
 import 'package:tax_client/core/network/token_storage.dart';
+import 'package:tax_client/features/associates/presentation/providers/associate_provider.dart';
 import 'package:tax_client/features/packages/data/models/package_model.dart';
 import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
 import 'package:tax_client/features/packages/presentation/widgets/package_bottom_sheet.dart';
@@ -61,11 +62,10 @@ class _ItrListScreenState extends ConsumerState<ItrListScreen> {
 
   Future<void> _handleAddNewItr() async {
     ref.read(journeyTypeProvider.notifier).state = JourneyType.ITR;
-    final selectedPackage = await _ensurePackageSelected();
-    if (selectedPackage == null || !mounted) {
+    if (ref.read(selectedAssociateProvider) == null) {
+      context.push('/services');
       return;
     }
-
     context.push('/personal_info');
   }
 

@@ -8,7 +8,7 @@ const DocumentUpload = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const panFromQuery = searchParams.get('PanNumber') || '';
-  const { user, selectedPackage } = useSelector((state: RootState) => state.auth);
+  const { user, selectedPackage, selectedAssociate } = useSelector((state: RootState) => state.auth);
   const panNumber = panFromQuery || user?.PanNumber || user?.pan || '';
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -688,33 +688,35 @@ const DocumentUpload = () => {
       </div>
 
       {/* Sidebar */}
-      {selectedPackage && (
+      {selectedAssociate || selectedPackage ? (
         <div className="lg:col-span-1">
 
           <div className="sticky top-20 bg-gradient-to-b from-gray-900 to-gray-900/50 border border-gray-800 rounded-lg p-4 space-y-4">
 
             <div>
               <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Selected Package
+                {selectedAssociate ? 'Selected Associate' : 'Selected Package'}
               </p>
 
               <h3 className="text-base font-semibold text-white">
-                {selectedPackage.packagename ||
-                  selectedPackage.name ||
-                  selectedPackage.packageName}
+                {selectedAssociate?.name ||
+                  selectedPackage?.packagename ||
+                  selectedPackage?.name ||
+                  selectedPackage?.packageName}
               </h3>
             </div>
 
             <div className="border-t border-gray-800 pt-4">
 
               <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Price
+                Fee
               </p>
 
               <p className="text-2xl font-bold text-white">
                 ₹
-                {parseFloat(selectedPackage.price) ||
-                  selectedPackage.cost ||
+                {selectedAssociate?.quotedFee ??
+                  parseFloat(selectedPackage?.price) ||
+                  selectedPackage?.cost ||
                   '0'}
               </p>
 

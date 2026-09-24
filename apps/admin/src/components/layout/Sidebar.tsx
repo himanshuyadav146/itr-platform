@@ -14,6 +14,7 @@ import {
   Description as DescriptionIcon,
   Group as GroupIcon,
   Inventory2 as PackagesIcon,
+  AccountCircle as ProfileIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
@@ -35,6 +36,12 @@ const menuItems: MenuItem[] = [
     text: 'Dashboard',
     icon: <DashboardIcon />,
     path: '/dashboard',
+  },
+  {
+    text: 'My Profile',
+    icon: <ProfileIcon />,
+    path: '/profile',
+    roles: [UserRole.CA, UserRole.ACCOUNTANT, UserRole.TAX_EXPERT],
   },
   {
     text: 'Users',

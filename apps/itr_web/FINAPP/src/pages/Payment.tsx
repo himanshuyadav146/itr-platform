@@ -145,6 +145,7 @@ const Payment = () => {
   const {
     user,
     selectedPackage,
+    selectedAssociate,
     isAuthenticated,
     token,
   } = useSelector((state: RootState) => state.auth);
@@ -214,6 +215,18 @@ const Payment = () => {
       setLoading(true);
       setError(null);
 
+      let associate = selectedAssociate as any;
+      if (!associate) {
+        try {
+          const storedAssociate = localStorage.getItem('selectedAssociate');
+          if (storedAssociate) {
+            associate = JSON.parse(storedAssociate);
+          }
+        } catch {
+          associate = null;
+        }
+      }
+
       let pkg = selectedPackage as PackageData | null;
 
       // Redux fallback -> localStorage
@@ -234,10 +247,12 @@ const Payment = () => {
       }
 
       const packageId = extractPackageId(pkg);
+      const associateId = associate?.id ? Number(associate.id) : undefined;
+      const serviceId = associate?.serviceId ? Number(associate.serviceId) : undefined;
 
-      if (!packageId) {
+      if (!associateId && !packageId) {
         setError(
-          'कोई पैकेज चुना नहीं गया। कृपया पहले एक पैकेज चुनें।'
+          'No associate selected. Please choose a service and associate first.'
         );
         return;
       }
@@ -252,7 +267,11 @@ const Payment = () => {
       // -----------------------------------------------------------------------
 
       try {
-        const info = await getPaymentInfo(packageId);
+        const info = await getPaymentInfo(packageId, {
+          associateId,
+          serviceId,
+          panNumber,
+        });
 
         setPayment(info as PaymentInfo);
       } catch (apiError) {
@@ -299,7 +318,7 @@ const Payment = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedPackage, panNumber]);
+  }, [selectedPackage, selectedAssociate, panNumber]);
 
   useEffect(() => {
     void init();
@@ -373,7 +392,11 @@ const Payment = () => {
       setProcessing(true);
       setError(null);
 
-      const response = await initiatePayment(payment.packageId, panNumber);
+      const response = await initiatePayment(payment.packageId, panNumber, {
+        associateId: selectedAssociate?.id ? Number(selectedAssociate.id) : undefined,
+        serviceId: selectedAssociate?.serviceId ? Number(selectedAssociate.serviceId) : undefined,
+        quotedFee: selectedAssociate?.quotedFee != null ? Number(selectedAssociate.quotedFee) : undefined,
+      });
 
       const internalOrderId = response.orderId;
       const key = response.key;
@@ -605,15 +628,15 @@ const Payment = () => {
                     {error}
                   </p>
 
-                  {error.includes('पैकेज चुना नहीं') && (
+                  {error.includes('associate selected') && (
                     <button
                       type="button"
                       onClick={() =>
-                        navigate('/packages')
+                        navigate('/services')
                       }
                       className="mt-2 px-3.5 py-2 bg-red-500/15 hover:bg-red-500/25 border border-red-700/50 rounded-lg text-red-200 text-xs font-medium transition-all"
                     >
-                      ← Packages पर जाएं
+                      ← Choose a service
                     </button>
                   )}
                   {error.toLowerCase().includes('pan') && (
@@ -677,7 +700,7 @@ const Payment = () => {
                   {/* Details */}
                   <div className="flex-1 min-w-0">
                     <p className="text-[9px] font-medium text-emerald-400/80 uppercase tracking-widest mb-0.5">
-                      Selected Package
+                      {selectedAssociate ? 'Selected Associate' : 'Selected Package'}
                     </p>
 
                     <h2 className="text-lg font-bold text-white truncate">
@@ -1099,7 +1122,7 @@ const Payment = () => {
                   id="back-to-packages-btn"
                   type="button"
                   onClick={() =>
-                    navigate('/packages')
+                    navigate('/services')
                   }
                   disabled={processing}
                   className="

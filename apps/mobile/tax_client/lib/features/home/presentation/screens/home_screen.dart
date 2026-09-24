@@ -111,6 +111,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
 
     PackageModel? selectedPackage = ref.read(selectedPackageProvider);
 
+    if (journeyType == JourneyType.ITR) {
+      if (!context.mounted) return;
+      context.push('/services');
+      return;
+    }
+
     if (journeyType == JourneyType.EVerify) {
       final packagesState = ref.read(packagesProvider);
       if (packagesState.hasValue && packagesState.value != null) {
@@ -132,7 +138,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
       }
       ref.read(selectedPackageProvider.notifier).state = selectedPackage;
     }
-    // File ITR: skip package sheet — go straight to ITR list / new filing.
+    // File ITR now goes through /services (associate marketplace).
 
     if (!context.mounted) return;
 

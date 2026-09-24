@@ -40,6 +40,12 @@ class ApiConstants {
   // Package Endpoints
   static const String packageGetPackages = '$api/package/getPackages.php';
 
+  // Associate marketplace
+  static const String associateServices = '$api/associates/services.php';
+  static const String associateList = '$api/associates/list.php';
+  static const String associateDetail = '$api/associates/detail.php';
+  static const String associateSelect = '$api/associates/select.php';
+
   // Payment Endpoints
   static const String paymentGetPaymentInfo = '$api/payment/get_payment_info.php';
   static const String paymentInitiatePayment = '$api/payment/initiate_payment.php';

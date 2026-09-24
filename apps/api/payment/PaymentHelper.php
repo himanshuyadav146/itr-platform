@@ -110,19 +110,37 @@ class PaymentHelper {
     }
     
     /**
-     * Calculate payment breakdown from package and additional fees
-     * 
+     * Calculate payment breakdown from associate fee (preferred) or package, plus additional fees.
+     *
      * @param mysqli $conn Database connection
-     * @param int|null $packageId Package ID from itr_packages
+     * @param int|null $packageId Package ID from itr_packages (legacy fallback)
      * @param float $gstPercentage GST percentage (default 18)
+     * @param int|null $associateId Selected associate user id
+     * @param int|null $serviceId Selected service id
+     * @param float|null $quotedFee Locked fee snapshot; when set, used instead of live fee
      * @return array Payment breakdown with subtotal, GST, grand_total, and fee_items
      */
-    public static function calculatePaymentBreakdown($conn, $packageId = null, $gstPercentage = 18) {
+    public static function calculatePaymentBreakdown($conn, $packageId = null, $gstPercentage = 18, $associateId = null, $serviceId = null, $quotedFee = null) {
         $subtotal = 0;
         $feeItems = [];
-        
-        // Get package price if package ID provided
-        if ($packageId) {
+        $associateMeta = null;
+
+        if ($associateId && $serviceId) {
+            require_once dirname(__DIR__) . '/associates/AssociateHelper.php';
+            $checkout = AssociateHelper::getListedCheckout($conn, (int)$associateId, (int)$serviceId);
+            if (!$checkout) {
+                throw new Exception('Associate is not listed for this service');
+            }
+            $feeAmount = ($quotedFee !== null && $quotedFee !== '') ? floatval($quotedFee) : floatval($checkout['fee']);
+            $subtotal += $feeAmount;
+            $feeItems[] = [
+                'name' => trim($checkout['name'] . ' — ' . $checkout['service_name']),
+                'amount' => $feeAmount,
+                'type' => 'associate_fee'
+            ];
+            $associateMeta = $checkout;
+            $associateMeta['quoted_fee'] = $feeAmount;
+        } elseif ($packageId) {
             $packageId = mysqli_real_escape_string($conn, $packageId);
             $packageSql = "SELECT id, packagename, price FROM itr_packages WHERE id = '$packageId' AND isActive = 1";
             $packageResult = $conn->query($packageSql);
@@ -161,7 +179,8 @@ class PaymentHelper {
             'gst_percentage' => $gstPercentage,
             'gst_amount' => $gstAmount,
             'grand_total' => round($grandTotal, 2),
-            'fee_items' => $feeItems
+            'fee_items' => $feeItems,
+            'associate' => $associateMeta,
         ];
     }
     

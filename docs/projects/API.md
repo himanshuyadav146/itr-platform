@@ -111,7 +111,7 @@ Run migrations: `php migrations/run_migrations.php`
 | `forget_password.php` | POST | No |
 | `delete_account.php` | POST | JWT |
 | `register_fcm.php` | POST | JWT |
-| `register_professional.php` | POST | No |
+| `register_associate.php` | POST | No (CA / ACCOUNTANT / TAX_EXPERT only) |
 
 ### itrdetails/
 
@@ -158,6 +158,17 @@ Run migrations: `php migrations/run_migrations.php`
 | `addPackage.php` | POST | JWT (Admin) |
 | `deletePackage.php` | POST | JWT (Admin) |
 
+### associates/
+
+| File | Method | Auth |
+|------|--------|------|
+| `services.php` | GET | No |
+| `list.php` | GET | No (approved + listed only) |
+| `detail.php` | GET | No (approved + listed only) |
+| `select.php` | POST | JWT (client) |
+| `profile.php` | GET/PUT | JWT (associate) |
+| `my_services.php` | GET/PUT | JWT (associate) |
+
 ### admin/
 
 | File | Purpose |
@@ -166,6 +177,7 @@ Run migrations: `php migrations/run_migrations.php`
 | `users.php` | User CRUD |
 | `itrs.php` | ITR list/detail/update |
 | `assign_itr.php` | Assign to professional |
+| `associates.php` | Approve / reject / unlist marketplace profiles |
 | `get_assignments.php` | List assignments |
 | `update_assignment.php` | Update assignment |
 | `update_status_step.php` | Update ITR status step |

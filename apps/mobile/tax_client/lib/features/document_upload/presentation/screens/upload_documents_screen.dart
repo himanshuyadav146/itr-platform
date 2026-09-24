@@ -15,6 +15,7 @@ import 'package:tax_client/features/document_upload/presentation/widgets/documen
 import 'package:tax_client/features/document_upload/presentation/widgets/document_tile.dart';
 import 'package:tax_client/features/document_upload/presentation/widgets/form16_password_sheet.dart';
 import 'package:tax_client/features/document_upload/providers/documents_provider.dart';
+import 'package:tax_client/features/associates/presentation/providers/associate_provider.dart';
 import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_provider.dart';
 
@@ -158,6 +159,7 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
     final notifier = ref.read(documentsProvider.notifier);
     final uploadState = ref.watch(documentUploadViewModelProvider);
     final selectedPackage = ref.watch(selectedPackageProvider);
+    final selectedAssociate = ref.watch(selectedAssociateProvider);
 
     final isLoading = uploadState is DocumentsLoading;
     final isSaving = uploadState is DocumentsSaving;
@@ -191,8 +193,16 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
             context.pop();
             return;
           }
+          final selectedAssociate = ref.read(selectedAssociateProvider);
           final packageId = ref.read(selectedPackageProvider)?.id ?? '1';
-          context.push('/payment?packageId=$packageId');
+          final query = [
+            'packageId=$packageId',
+            if (selectedAssociate != null)
+              'associateId=${selectedAssociate.associateId}',
+            if (selectedAssociate != null)
+              'serviceId=${selectedAssociate.serviceId}',
+          ].join('&');
+          context.push('/payment?$query');
         }
       } else if (next is DocumentUploadError) {
         ErrorHandler.showError(context, next.message);
@@ -279,9 +289,10 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
                       ),
                       const SizedBox(height: AppSpacing.xl),
                       _DocumentUploadHeroCard(
-                        packageName:
-                            selectedPackage?.name ??
-                            'Package will be used for payment',
+                        packageName: selectedAssociate != null
+                            ? '${selectedAssociate.associateName} · ${selectedAssociate.serviceName}'
+                            : selectedPackage?.name ??
+                                'Associate fee will be used for payment',
                         totalDocuments: totalDocuments,
                       ),
                       const SizedBox(height: AppSpacing.xl),

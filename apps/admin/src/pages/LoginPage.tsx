@@ -1,9 +1,11 @@
-import { Box, Container, Paper, Typography, Link } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Box, Container, Paper, Typography, Link, Alert } from '@mui/material';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { LoginForm } from '../components/auth/LoginForm';
 import { gradients } from '../theme/theme';
 
 const LoginPage = () => {
+  const [searchParams] = useSearchParams();
+  const justRegistered = searchParams.get('registered') === '1';
   return (
     <Box
       sx={{
@@ -79,6 +81,12 @@ const LoginPage = () => {
                 Sign in to access your admin dashboard
               </Typography>
             </Box>
+
+            {justRegistered && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                Account created. Sign in, then complete My Profile so an admin can list you on the marketplace.
+              </Alert>
+            )}
 
             <LoginForm />
 

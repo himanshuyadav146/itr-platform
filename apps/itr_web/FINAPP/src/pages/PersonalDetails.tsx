@@ -7,7 +7,7 @@ import type { RootState } from '../store/index';
 const PersonalDetails = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, selectedPackage, isAuthenticated, token } = useSelector(
+  const { user, selectedPackage, selectedAssociate, isAuthenticated, token } = useSelector(
     (state: RootState) => state.auth
   );
 
@@ -154,11 +154,10 @@ const PersonalDetails = () => {
 
   // Redirect to packages if no package selected
   useEffect(() => {
-    if (!selectedPackage) {
-      console.log('[PersonalDetails] No package selected, redirecting to packages');
-      navigate('/packages');
+    if (!selectedAssociate && !selectedPackage) {
+      navigate('/services');
     }
-  }, [selectedPackage, navigate]);
+  }, [selectedAssociate, selectedPackage, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -208,6 +207,8 @@ const PersonalDetails = () => {
         country: formData.country,
         journeyType: 'ITR',
         ...(packageId != null ? { packageId: Number(packageId) || packageId } : {}),
+        ...(selectedAssociate?.id ? { associateId: Number(selectedAssociate.id) } : {}),
+        ...(selectedAssociate?.serviceId ? { serviceId: Number(selectedAssociate.serviceId) } : {}),
         ...(userId ? { userId } : {}),
       };
       console.log('[PersonalDetails] Submitting payload:', payload);
@@ -677,32 +678,37 @@ const PersonalDetails = () => {
     </div>
 
     {/* Sidebar */}
-    {selectedPackage && (
+    {selectedAssociate || selectedPackage ? (
       <div className="lg:col-span-1">
         <div className="sticky top-20 bg-gradient-to-b from-gray-900 to-gray-900/50 border border-gray-800 rounded-lg p-4 space-y-4">
 
           <div>
             <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-              Selected Package
+              {selectedAssociate ? 'Selected Associate' : 'Selected Package'}
             </p>
             <h3 className="text-base font-semibold text-white">
-              {selectedPackage.packagename ||
-                selectedPackage.name ||
-                selectedPackage.packageName}
+              {selectedAssociate?.name ||
+                selectedPackage?.packagename ||
+                selectedPackage?.name ||
+                selectedPackage?.packageName}
             </h3>
+            {selectedAssociate?.serviceName && (
+              <p className="text-xs text-gray-400 mt-1">{selectedAssociate.serviceName}</p>
+            )}
           </div>
 
           <div className="border-t border-gray-800 pt-4">
             <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-              Price
+              Fee
             </p>
             <p className="text-2xl font-bold text-white">
-              ₹{parseFloat(selectedPackage.price) ||
-                selectedPackage.cost ||
+              ₹{selectedAssociate?.quotedFee ??
+                parseFloat(selectedPackage?.price) ||
+                selectedPackage?.cost ||
                 "0"}
             </p>
             <p className="text-[11px] text-gray-500 mt-1">
-              All taxes included
+              GST extra at payment
             </p>
           </div>
 

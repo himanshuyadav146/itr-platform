@@ -44,8 +44,8 @@ mysql -u your_username -p your_database < migrations/add_turnover_to_packages.sq
 # 2. Add package_id to personal_details
 mysql -u your_username -p your_database < migrations/add_package_id_to_personal_details.sql
 
-# 3. Insert frontend packages data
-mysql -u your_username -p your_database < migrations/insert_frontend_packages.sql
+# 4. Associate marketplace
+mysql -u your_username -p your_database < migrations/add_associate_marketplace.sql
 ```
 
 **OR** use the PHP migration runner:

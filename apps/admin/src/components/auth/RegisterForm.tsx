@@ -60,7 +60,7 @@ export const RegisterForm = () => {
             type: 'success',
           })
         );
-        navigate('/login');
+        navigate('/login?registered=1');
       } else {
         setError(response.data?.message || 'Registration failed');
       }

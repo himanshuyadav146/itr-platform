@@ -170,7 +170,7 @@ const Dashboard = () => {
                         <p className="text-sm text-gray-400 mt-1">View and manage your ITR filings</p>
                     </div>
                     <button
-                        onClick={() => navigate('/packages')}
+                        onClick={() => navigate('/services')}
                         className="px-6 py-2.5 bg-white text-black text-sm font-semibold rounded-lg hover:bg-gray-100 transition-colors"
                     >
                         + File New ITR
@@ -300,7 +300,7 @@ const Dashboard = () => {
                                     <h3 className="text-lg font-bold text-white mb-2">No ITR Filings Yet</h3>
                                     <p className="text-gray-400 text-sm mb-6">Start filing your income tax return today to get started</p>
                                     <button
-                                        onClick={() => navigate('/packages')}
+                                        onClick={() => navigate('/services')}
                                         className="w-full px-6 py-3 bg-white text-black text-sm font-semibold rounded-lg hover:bg-gray-100 transition-colors"
                                     >
                                         File Your First ITR

@@ -161,6 +161,8 @@ $country = trim($data['country'] ?? 'India');
 $dateOfBirth = trim($data['DATEOFBIRTH'] ?? $data['dateOfBirth'] ?? '');
 // Package ID from frontend
 $packageId = isset($data['packageId']) ? (int)$data['packageId'] : null;
+$associateId = isset($data['associateId']) ? (int)$data['associateId'] : (isset($data['associate_id']) ? (int)$data['associate_id'] : null);
+$serviceId = isset($data['serviceId']) ? (int)$data['serviceId'] : (isset($data['service_id']) ? (int)$data['service_id'] : null);
 // Journey Type - determines which service flow the user is in
 $journeyType = trim($data['journeyType'] ?? '');
 
@@ -198,6 +200,8 @@ $financialYear = mysqli_real_escape_string($conn, $financialYear);
 $address = mysqli_real_escape_string($conn, $address);
 $country = mysqli_real_escape_string($conn, $country);
 $packageIdSql = ($packageId === null) ? 'NULL' : (int)$packageId;
+$associateIdSql = ($associateId === null || $associateId <= 0) ? 'NULL' : (int)$associateId;
+$serviceIdSql = ($serviceId === null || $serviceId <= 0) ? 'NULL' : (int)$serviceId;
 $journeyType = mysqli_real_escape_string($conn, $journeyType);
 
 // Check if connection is valid
@@ -289,6 +293,8 @@ if ($checkResult->num_rows > 0) {
             DATEOFBIRTH=$dateOfBirthSql,
             FinancialYear='$financialYear',
             package_id=$packageIdSql,
+            associate_id=$associateIdSql,
+            service_id=$serviceIdSql,
             journeyId=$journeyIdSql,
             Address='$address',
             Country='$country',
@@ -343,10 +349,10 @@ if ($checkResult->num_rows > 0) {
 // ------------------------------
 $sql = "INSERT INTO personal_details 
         (UserId, PANNumber, FirstName, MiddleName, LastName, EMAIL, MobileNumber, aadharCardNumber, 
-        Gender, DATEOFBIRTH, FinancialYear, package_id, journeyId, Address, Country, isActive, CreatedAt)
+        Gender, DATEOFBIRTH, FinancialYear, package_id, associate_id, service_id, journeyId, Address, Country, isActive, CreatedAt)
         VALUES 
         ('$UserId', '$panNumber', '$firstName', '$middleName', '$lastName', '$email', '$mobileNumber', 
-        '$aadharCardNumber', '$gender', $dateOfBirthSql, '$financialYear', $packageIdSql, $journeyIdSql, '$address', '$country', 1, NOW())";
+        '$aadharCardNumber', '$gender', $dateOfBirthSql, '$financialYear', $packageIdSql, $associateIdSql, $serviceIdSql, $journeyIdSql, '$address', '$country', 1, NOW())";
 
 if ($conn->query($sql) === TRUE) {
     // Also create itr_detail entry for this user and PAN

@@ -1,5 +1,5 @@
 export const NAV_LINKS = [
-  { label: 'Packages', to: '/packages' },
+  { label: 'Associates', to: '/services' },
 ];
 
 export const CTA_LINK = {
@@ -12,8 +12,12 @@ export const FOOTER_LINKS =[
     { label: 'Terms & Conditions', to: '/term-and-condition' },
     { label: 'About Us', to: '/about-us' },
     { label: 'Contact Us', to: '/contact-us' },
+    { label: 'Join as associate', to: '/associate-register' },
 ]
 
 export const HOME_LINKS ={
-    startFiling: '/packages',
+    startFiling: '/services',
 }
+
+export const ADMIN_LOGIN_URL =
+  import.meta.env.VITE_ADMIN_LOGIN_URL || 'https://allindiaitr.in/admin/login';

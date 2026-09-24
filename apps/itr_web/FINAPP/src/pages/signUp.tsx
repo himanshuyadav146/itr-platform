@@ -159,6 +159,12 @@ const Signup = () => {
             >
               Login
             </a>
+            <span className="block mt-2">
+              CA, Accountant, or Tax Expert?{' '}
+              <a href="/associate-register" className="font-medium text-white hover:text-gray-300">
+                Join as associate
+              </a>
+            </span>
           </p>
         </div>
 

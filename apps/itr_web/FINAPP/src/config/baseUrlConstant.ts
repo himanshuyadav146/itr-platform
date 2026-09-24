@@ -11,6 +11,11 @@ export const apiUrl = {
 
   // Packages
   getPackages: `${baseUrl}/package/getPackages.php`,
+  registerAssociate: `${baseUrl}/auth/register_associate.php`,
+  getServices: `${baseUrl}/associates/services.php`,
+  getAssociates: `${baseUrl}/associates/list.php`,
+  getAssociateDetail: `${baseUrl}/associates/detail.php`,
+  selectAssociate: `${baseUrl}/associates/select.php`,
 
   // Personal details / ITR
   addPersonalDetails: `${baseUrl}/itrdetails/add_personal_details.php`,
@@ -40,4 +45,8 @@ export const PUBLIC_API_PATHS = [
   apiUrl.signup,
   apiUrl.forgetPassword,
   apiUrl.getPackages,
+  apiUrl.registerAssociate,
+  apiUrl.getServices,
+  apiUrl.getAssociates,
+  apiUrl.getAssociateDetail,
 ];
