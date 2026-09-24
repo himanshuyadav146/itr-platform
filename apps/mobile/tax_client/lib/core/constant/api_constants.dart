@@ -45,4 +45,9 @@ class ApiConstants {
   static const String paymentInitiatePayment = '$api/payment/initiate_payment.php';
   static const String paymentGetPaymentStatus = '$api/payment/get_payment_status.php';
   static const String paymentVerifyPayment = '$api/payment/verify_payment.php';
+
+  static const String associateList = '$api/associates/list.php';
+  static const String associateDetail = '$api/associates/detail.php';
+  static const String associateServices = '$api/associates/services.php';
+  static const String associateSelect = '$api/associates/select.php';
 }

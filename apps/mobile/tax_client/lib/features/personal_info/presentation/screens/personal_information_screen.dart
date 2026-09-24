@@ -12,6 +12,7 @@ import 'package:tax_client/core/constant/app_constants.dart';
 import 'package:tax_client/core/utils/error_handler.dart';
 import 'package:tax_client/core/utils/field_validators.dart';
 import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
+import 'package:tax_client/features/associates/presentation/providers/associate_providers.dart';
 import 'package:tax_client/features/personal_info/data/models/itr_personal_detail_model.dart';
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_provider.dart';
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_state.dart';
@@ -99,6 +100,8 @@ class _PersonalInformationScreenState
   void _handleSave() {
     if (_formKey.currentState?.validate() ?? false) {
       final selectedPackage = ref.read(selectedPackageProvider);
+      final selectedAssociate = ref.read(selectedAssociateProvider);
+      final selectedService = ref.read(selectedCatalogServiceProvider);
       final journeyType = ref.read(journeyTypeProvider);
 
       ref
@@ -119,6 +122,8 @@ class _PersonalInformationScreenState
             packageId: selectedPackage?.id != null
                 ? int.tryParse(selectedPackage!.id)
                 : null,
+            associateId: selectedAssociate?.id,
+            serviceId: selectedService?.id,
           );
     }
   }

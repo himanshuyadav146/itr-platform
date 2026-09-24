@@ -7,7 +7,7 @@ import type { RootState } from '../store/index';
 const PersonalDetails = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, selectedPackage, isAuthenticated, token } = useSelector(
+  const { user, selectedPackage, selectedAssociate, selectedService, isAuthenticated, token } = useSelector(
     (state: RootState) => state.auth
   );
 
@@ -156,7 +156,7 @@ const PersonalDetails = () => {
   useEffect(() => {
     if (!selectedPackage) {
       console.log('[PersonalDetails] No package selected, redirecting to packages');
-      navigate('/packages');
+      navigate('/services');
     }
   }, [selectedPackage, navigate]);
 
@@ -193,6 +193,14 @@ const PersonalDetails = () => {
         (selectedPackage as any)?.packageId ??
         (selectedPackage as any)?.PackageId ??
         undefined;
+      const associateId =
+        (selectedAssociate as any)?.user_id ??
+        (selectedAssociate as any)?.id ??
+        undefined;
+      const serviceId =
+        (selectedService as any)?.id ??
+        (selectedService as any)?.service_id ??
+        undefined;
 
       const payload = {
         panNumber: formData.panNumber,
@@ -208,6 +216,8 @@ const PersonalDetails = () => {
         country: formData.country,
         journeyType: 'ITR',
         ...(packageId != null ? { packageId: Number(packageId) || packageId } : {}),
+        ...(associateId != null ? { associateId: Number(associateId) } : {}),
+        ...(serviceId != null ? { serviceId: Number(serviceId) } : {}),
         ...(userId ? { userId } : {}),
       };
       console.log('[PersonalDetails] Submitting payload:', payload);

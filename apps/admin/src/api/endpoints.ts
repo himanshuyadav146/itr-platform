@@ -4,7 +4,7 @@ const LOGIN_PATH = import.meta.env.VITE_LOGIN_PATH || '/auth/login.php';
 export const API_ENDPOINTS = {
   // Authentication
   LOGIN: LOGIN_PATH,
-  REGISTER_PROFESSIONAL: '/auth/signup.php',
+  REGISTER_PROFESSIONAL: '/auth/register_associate.php',
   ADMIN_LOGIN: '/auth/admin_login.php',
   DELETE_ACCOUNT: '/auth/delete_account.php',
 
@@ -30,6 +30,11 @@ export const API_ENDPOINTS = {
   // Professionals
   PROFESSIONALS: '/admin/professionals.php',
   PROFESSIONAL_DETAILS: (id: number) => `/admin/professionals.php?id=${id}`,
+  ASSOCIATES: '/admin/associates.php',
+  ASSOCIATE_DETAILS: (id: number) => `/admin/associates.php?id=${id}`,
+  ASSOCIATE_PROFILE: '/associates/profile.php',
+  ASSOCIATE_MY_SERVICES: '/associates/my_services.php',
+  ADMIN_SERVICES: '/admin/services.php',
   
   // Personal Details
   PERSONAL_DETAILS: (userId: number, panNumber?: string) => {

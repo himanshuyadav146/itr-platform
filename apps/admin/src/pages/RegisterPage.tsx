@@ -77,7 +77,7 @@ const RegisterPage = () => {
                 Join Our Team
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Register as a Professional - CA, Tax Expert, or Accountant
+                Register as a Professional - CA, Tax Expert, or Accountant. Listing stays pending until an admin approves your credentials.
               </Typography>
             </Box>
 

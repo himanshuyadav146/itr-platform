@@ -145,6 +145,8 @@ const Payment = () => {
   const {
     user,
     selectedPackage,
+    selectedAssociate,
+    selectedService,
     isAuthenticated,
     token,
   } = useSelector((state: RootState) => state.auth);
@@ -215,6 +217,8 @@ const Payment = () => {
       setError(null);
 
       let pkg = selectedPackage as PackageData | null;
+      let associate = selectedAssociate as any;
+      let service = selectedService as any;
 
       // Redux fallback -> localStorage
       if (!pkg) {
@@ -232,12 +236,26 @@ const Payment = () => {
           );
         }
       }
+      if (!associate) {
+        try {
+          const stored = localStorage.getItem('selectedAssociate');
+          if (stored) associate = JSON.parse(stored);
+        } catch { /* ignore */ }
+      }
+      if (!service) {
+        try {
+          const stored = localStorage.getItem('selectedService');
+          if (stored) service = JSON.parse(stored);
+        } catch { /* ignore */ }
+      }
 
       const packageId = extractPackageId(pkg);
+      const associateId = associate?.user_id ?? associate?.id;
+      const serviceId = service?.id ?? service?.service_id;
 
-      if (!packageId) {
+      if (!packageId && !associateId) {
         setError(
-          'कोई पैकेज चुना नहीं गया। कृपया पहले एक पैकेज चुनें।'
+          'No associate or package selected. Please choose a service and associate first.'
         );
         return;
       }
@@ -252,7 +270,11 @@ const Payment = () => {
       // -----------------------------------------------------------------------
 
       try {
-        const info = await getPaymentInfo(packageId);
+        const info = await getPaymentInfo(packageId || 0, {
+          associateId,
+          serviceId,
+          panNumber,
+        });
 
         setPayment(info as PaymentInfo);
       } catch (apiError) {
@@ -299,7 +321,7 @@ const Payment = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedPackage, panNumber]);
+  }, [selectedPackage, selectedAssociate, selectedService, panNumber]);
 
   useEffect(() => {
     void init();
@@ -373,7 +395,10 @@ const Payment = () => {
       setProcessing(true);
       setError(null);
 
-      const response = await initiatePayment(payment.packageId, panNumber);
+      const response = await initiatePayment(payment.packageId, panNumber, {
+        associateId: (selectedAssociate as any)?.user_id ?? (selectedAssociate as any)?.id,
+        serviceId: (selectedService as any)?.id ?? (selectedService as any)?.service_id,
+      });
 
       const internalOrderId = response.orderId;
       const key = response.key;
@@ -609,7 +634,7 @@ const Payment = () => {
                     <button
                       type="button"
                       onClick={() =>
-                        navigate('/packages')
+                        navigate('/services')
                       }
                       className="mt-2 px-3.5 py-2 bg-red-500/15 hover:bg-red-500/25 border border-red-700/50 rounded-lg text-red-200 text-xs font-medium transition-all"
                     >
@@ -1099,7 +1124,7 @@ const Payment = () => {
                   id="back-to-packages-btn"
                   type="button"
                   onClick={() =>
-                    navigate('/packages')
+                    navigate('/services')
                   }
                   disabled={processing}
                   className="

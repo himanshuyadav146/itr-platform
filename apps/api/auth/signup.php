@@ -87,16 +87,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $platform = mysqli_real_escape_string($conn, $data['platform'] ?? 'web');
     $version = mysqli_real_escape_string($conn, $data['version'] ?? '1.0');
     
-    // Handle Role - validate against ENUM values.
-    // Accept role/Role, and map legacy occupation from admin register screen.
-    $validRoles = ['CLIENT', 'ADMIN', 'ACCOUNTANT', 'CA', 'TAX_EXPERT'];
+    // Public signup is CLIENT only. Associates use /auth/register_associate.php.
+    // Never accept ADMIN (or other staff roles) from this public endpoint.
     $roleRaw = $data['role'] ?? ($data['Role'] ?? ($data['occupation'] ?? null));
     $role = $roleRaw ? strtoupper(trim($roleRaw)) : 'CLIENT';
-    
-    // Validate Role - if invalid, default to CLIENT
-    if (!in_array($role, $validRoles)) {
-        $role = 'CLIENT';
+    $blockedRoles = ['ADMIN', 'ACCOUNTANT', 'CA', 'TAX_EXPERT'];
+    if (in_array($role, $blockedRoles, true)) {
+        $response = [
+            "statusCode" => 403,
+            "status" => "error",
+            "data" => [
+                "message" => "Public signup is for clients only. Associates should register at /auth/register_associate.php. Admin accounts are not created from the public site."
+            ]
+        ];
+        http_response_code(403);
+        echo json_encode($response);
+        exit;
     }
+    $role = 'CLIENT';
     
     $role = mysqli_real_escape_string($conn, $role);
 

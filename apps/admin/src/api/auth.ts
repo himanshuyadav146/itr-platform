@@ -48,6 +48,8 @@ export const authApi = {
       role: data.occupation,
       phone: data.phone,
       occupation: data.occupation,
+      icai_membership_no: (data as any).icai_membership_no,
+      city: (data as any).city,
     };
     const response = await apiClient.post<ApiResponse>(API_ENDPOINTS.REGISTER_PROFESSIONAL, payload);
     return response.data;

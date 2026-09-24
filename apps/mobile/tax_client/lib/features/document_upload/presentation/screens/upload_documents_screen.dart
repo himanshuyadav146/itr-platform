@@ -16,6 +16,7 @@ import 'package:tax_client/features/document_upload/presentation/widgets/documen
 import 'package:tax_client/features/document_upload/presentation/widgets/form16_password_sheet.dart';
 import 'package:tax_client/features/document_upload/providers/documents_provider.dart';
 import 'package:tax_client/features/packages/presentation/providers/package_provider.dart';
+import 'package:tax_client/features/associates/presentation/providers/associate_providers.dart';
 import 'package:tax_client/features/personal_info/presentation/providers/personal_info_provider.dart';
 
 class UploadDocumentsScreen extends ConsumerStatefulWidget {
@@ -191,8 +192,17 @@ class _UploadDocumentsScreenState extends ConsumerState<UploadDocumentsScreen> {
             context.pop();
             return;
           }
-          final packageId = ref.read(selectedPackageProvider)?.id ?? '1';
-          context.push('/payment?packageId=$packageId');
+          final packageId = ref.read(selectedPackageProvider)?.id;
+          final associate = ref.read(selectedAssociateProvider);
+          final service = ref.read(selectedCatalogServiceProvider);
+          final params = <String>[];
+          if (packageId != null && packageId.isNotEmpty) {
+            params.add('packageId=$packageId');
+          }
+          if (associate != null) params.add('associateId=${associate.id}');
+          if (service != null) params.add('serviceId=${service.id}');
+          final query = params.isEmpty ? '' : '?${params.join('&')}';
+          context.push('/payment$query');
         }
       } else if (next is DocumentUploadError) {
         ErrorHandler.showError(context, next.message);

@@ -157,10 +157,17 @@ export const toRazorpayPaise = (amount: number, rupeesHint?: number): number => 
 const digitsOnly = (value: string): string => value.replace(/\D/g, '');
 
 export const getPaymentInfo = async (
-  packageId: string | number
+  packageId: string | number,
+  options?: { associateId?: string | number; serviceId?: string | number; panNumber?: string }
 ): Promise<PaymentInfo> => {
+  const params: Record<string, unknown> = {};
+  if (packageId) params.packageId = packageId;
+  if (options?.associateId) params.associateId = options.associateId;
+  if (options?.serviceId) params.serviceId = options.serviceId;
+  if (options?.panNumber) params.panNumber = options.panNumber;
+
   const response = await makeRequest<unknown>(apiUrl.getPaymentInfo, {
-    params: { packageId },
+    params,
     method: 'GET',
   });
 
@@ -204,7 +211,8 @@ export const getPaymentInfo = async (
 
 export const initiatePayment = async (
   packageId: string | number,
-  panNumber?: string
+  panNumber?: string,
+  options?: { associateId?: string | number; serviceId?: string | number }
 ): Promise<PaymentInitiateResponse> => {
   const normalizedPan = normalizePanNumber(panNumber);
   if (!isValidPanNumber(normalizedPan)) {
@@ -212,9 +220,13 @@ export const initiatePayment = async (
   }
 
   const body: Record<string, unknown> = {
-    packageId: Number(packageId) || packageId,
     panNumber: normalizedPan,
   };
+  if (packageId) {
+    body.packageId = Number(packageId) || packageId;
+  }
+  if (options?.associateId) body.associateId = Number(options.associateId);
+  if (options?.serviceId) body.serviceId = Number(options.serviceId);
 
   const response = await makeRequest<Record<string, unknown>>(apiUrl.initiatePayment, {
     method: 'POST',

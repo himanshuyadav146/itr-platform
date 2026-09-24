@@ -95,6 +95,8 @@ Response (`data`):
 
 ### Signup
 
+Public signup is **CLIENT only**. `ADMIN` and associate roles are rejected. Associates register at `POST /auth/register_associate.php` and stay unlisted until an admin approves the profile.
+
 **`POST /auth/signup.php`**
 
 Request:
@@ -131,6 +133,28 @@ Request:
 | `CA` | Chartered accountant (admin panel) |
 | `ACCOUNTANT` | Accountant (admin panel) |
 | `TAX_EXPERT` | Tax expert (admin panel) |
+
+### Associate marketplace
+
+Public (approved associates only):
+
+- `GET /associates/services.php`
+- `GET /associates/list.php?serviceId=`
+- `GET /associates/detail.php?id=`
+- `POST /auth/register_associate.php` — CA / ACCOUNTANT / TAX_EXPERT, `approval_status=pending`
+
+Authenticated:
+
+- `POST /associates/select.php`
+- `GET|PUT /associates/profile.php`
+- `GET|PUT /associates/my_services.php`
+
+Admin:
+
+- `GET|POST /admin/associates.php` — list, approve, reject, unlist
+- `GET|POST|PUT /admin/services.php` — catalog
+
+Payment uses the associate `listed_fee` from the database (`quoted_fee` snapshot) plus GST and additional fees. Package price remains the fallback for older orders.
 
 ---
 

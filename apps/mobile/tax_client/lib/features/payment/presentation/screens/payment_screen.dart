@@ -16,9 +16,11 @@ import 'package:tax_client/features/payment/data/models/payment_initiate_respons
 import 'package:tax_client/features/payment/data/models/payment_summary_item.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
-  final int packageId;
+  final int? packageId;
+  final int? associateId;
+  final int? serviceId;
 
-  const PaymentScreen({super.key, this.packageId = 1});
+  const PaymentScreen({super.key, this.packageId, this.associateId, this.serviceId});
 
   @override
   ConsumerState<PaymentScreen> createState() => _PaymentScreenState();
@@ -78,7 +80,13 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       });
 
       final dataSource = ref.read(paymentRemoteDataSourceProvider);
-      final info = await dataSource.getPaymentInfo(widget.packageId);
+      final panNumber = await ref.read(tokenStorageProvider).getPanNumber();
+      final info = await dataSource.getPaymentInfo(
+        packageId: widget.packageId,
+        associateId: widget.associateId,
+        serviceId: widget.serviceId,
+        panNumber: panNumber,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -155,6 +163,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       try {
         initiateResponse = await dataSource.initiatePayment(
           packageId: widget.packageId,
+          associateId: widget.associateId,
+          serviceId: widget.serviceId,
           panNumber: panNumber,
         );
       } catch (e) {
@@ -256,7 +266,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
     final grandTotal = _grandTotalItem;
     final regularItems = _regularSummaryItems;
     final packageLabel =
-        selectedPackage?.name ?? 'Package #${widget.packageId}';
+        selectedPackage?.name ??
+        (widget.associateId != null ? 'Associate fee' : 'Package #${widget.packageId ?? ''}');
 
     return CoreScaffold(
       includeAppBar: false,

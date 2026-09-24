@@ -160,6 +160,12 @@ const Signup = () => {
               Login
             </a>
           </p>
+          <p className="mt-3 text-center text-sm text-gray-500">
+            CA or tax expert?{' '}
+            <a href="/associate-register" className="font-medium text-blue-400 hover:text-blue-300">
+              Register as an associate
+            </a>
+          </p>
         </div>
 
       </div>

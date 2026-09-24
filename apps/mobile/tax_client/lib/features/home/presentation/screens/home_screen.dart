@@ -132,7 +132,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
       }
       ref.read(selectedPackageProvider.notifier).state = selectedPackage;
     }
-    // File ITR: skip package sheet — go straight to ITR list / new filing.
+
+    if (journeyType == JourneyType.ITR) {
+      if (!context.mounted) return;
+      context.push('/services');
+      return;
+    }
 
     if (!context.mounted) return;
 

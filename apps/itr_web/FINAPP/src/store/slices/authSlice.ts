@@ -16,6 +16,8 @@ export interface AuthState {
   error: string | null;
   isAuthenticated: boolean;
   selectedPackage: any | null;
+  selectedAssociate: any | null;
+  selectedService: any | null;
 }
 
 const initialState: AuthState = {
@@ -47,6 +49,22 @@ const initialState: AuthState = {
     try {
       const pkgStr = localStorage.getItem('selectedPackage');
       return pkgStr ? JSON.parse(pkgStr) : null;
+    } catch {
+      return null;
+    }
+  })(),
+  selectedAssociate: (() => {
+    try {
+      const raw = localStorage.getItem('selectedAssociate');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })(),
+  selectedService: (() => {
+    try {
+      const raw = localStorage.getItem('selectedService');
+      return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
     }
@@ -180,6 +198,22 @@ const authSlice = createSlice({
         localStorage.removeItem('selectedPackage');
       }
     },
+    setSelectedAssociate: (state, action: PayloadAction<any | null>) => {
+      state.selectedAssociate = action.payload;
+      if (action.payload) {
+        localStorage.setItem('selectedAssociate', JSON.stringify(action.payload));
+      } else {
+        localStorage.removeItem('selectedAssociate');
+      }
+    },
+    setSelectedService: (state, action: PayloadAction<any | null>) => {
+      state.selectedService = action.payload;
+      if (action.payload) {
+        localStorage.setItem('selectedService', JSON.stringify(action.payload));
+      } else {
+        localStorage.removeItem('selectedService');
+      }
+    },
   },
   extraReducers: (builder) => {
     // Login
@@ -247,5 +281,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setUser, setToken, clearError, setLoading, setSelectedPackage } = authSlice.actions;
+export const { setUser, setToken, clearError, setLoading, setSelectedPackage, setSelectedAssociate, setSelectedService } = authSlice.actions;
 export default authSlice.reducer;

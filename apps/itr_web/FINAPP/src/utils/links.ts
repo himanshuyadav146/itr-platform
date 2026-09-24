@@ -1,5 +1,7 @@
 export const NAV_LINKS = [
+  { label: 'Services', to: '/services' },
   { label: 'Packages', to: '/packages' },
+  { label: 'Become an Associate', to: '/associate-register' },
 ];
 
 export const CTA_LINK = {
@@ -15,5 +17,5 @@ export const FOOTER_LINKS =[
 ]
 
 export const HOME_LINKS ={
-    startFiling: '/packages',
+    startFiling: '/services',
 }

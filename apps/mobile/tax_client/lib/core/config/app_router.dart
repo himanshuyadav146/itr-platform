@@ -18,7 +18,9 @@ import 'package:tax_client/features/tax_calculator/presentation/screens/tax_calc
 
 import '../../features/document_upload/presentation/screens/upload_documents_screen.dart';
 import 'package:tax_client/features/status/presentation/screens/status_screen.dart';
-import '../../features/splash/presentation/screens/splash_screen.dart';
+import 'package:tax_client/features/associates/presentation/screens/services_screen.dart';
+import 'package:tax_client/features/associates/presentation/screens/associates_screen.dart';
+import 'package:tax_client/features/associates/presentation/screens/associate_detail_screen.dart';
 import 'package:tax_client/core/common/screens/web_content_screen.dart';
 import 'package:tax_client/core/services/analytics/analytics_service.dart';
 
@@ -135,9 +137,39 @@ class AppRouter {
           builder: (BuildContext context, GoRouterState state) {
             final packageIdStr = state.uri.queryParameters['packageId'];
             final packageId = packageIdStr != null
-                ? int.tryParse(packageIdStr) ?? 1
-                : 1;
-            return PaymentScreen(packageId: packageId);
+                ? int.tryParse(packageIdStr)
+                : null;
+            final associateId = int.tryParse(state.uri.queryParameters['associateId'] ?? '');
+            final serviceId = int.tryParse(state.uri.queryParameters['serviceId'] ?? '');
+            return PaymentScreen(
+              packageId: packageId,
+              associateId: associateId,
+              serviceId: serviceId,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/services',
+          name: 'services',
+          builder: (BuildContext context, GoRouterState state) {
+            return const ServicesScreen();
+          },
+        ),
+        GoRoute(
+          path: '/associates',
+          name: 'associates',
+          builder: (BuildContext context, GoRouterState state) {
+            final serviceId = int.tryParse(state.uri.queryParameters['serviceId'] ?? '');
+            return AssociatesScreen(serviceId: serviceId);
+          },
+        ),
+        GoRoute(
+          path: '/associates/:id',
+          name: 'associate_detail',
+          builder: (BuildContext context, GoRouterState state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            final serviceId = int.tryParse(state.uri.queryParameters['serviceId'] ?? '');
+            return AssociateDetailScreen(associateId: id, serviceId: serviceId);
           },
         ),
         GoRoute(
