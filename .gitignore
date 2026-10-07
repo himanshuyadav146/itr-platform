@@ -167,6 +167,7 @@ apps/mobile/tax_client/**/DerivedData/
 tmp/
 temp/
 .cache/
+.local-dev-logs/
 
 # -----------------------------------------------------------------------------
 # Backups & archives (generated, not source)

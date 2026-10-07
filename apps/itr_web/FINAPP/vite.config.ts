@@ -6,9 +6,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    port: 5174,
     proxy: {
       '/api': {
-        target: 'https://allindiaitr.in',
+        target: 'http://localhost',
         changeOrigin: true,
         secure: false,
       },

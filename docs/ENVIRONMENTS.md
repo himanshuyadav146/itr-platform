@@ -6,10 +6,10 @@ Configuration reference for local, staging, and production across all ITR Platfo
 
 ## Environment overview
 
-| Environment | API URL | Admin URL | Mobile base URL |
-|-------------|---------|-----------|-----------------|
-| **Local** | `http://localhost/api` | `http://localhost:5173/admin/` | `http://10.0.2.2/api` (Android emulator) |
-| **Production** | `http://allindiaitr.in/api` | `https://allindiaitr.in/admin/` | `http://allindiaitr.in` |
+| Environment | API URL | Admin URL | Website URL | Mobile base URL |
+|-------------|---------|-----------|-------------|-----------------|
+| **Local** | `http://localhost/api` | `http://localhost:5173/admin/` | `http://localhost:5174/` | `http://10.0.2.2/api` (Android emulator) |
+| **Production** | `http://allindiaitr.in/api` | `https://allindiaitr.in/admin/` | `https://allindiaitr.in/` | `http://allindiaitr.in` |
 
 > Staging is not configured yet. When added, document URLs here and in each app's config.
 
@@ -22,7 +22,7 @@ Configuration reference for local, staging, and production across all ITR Platfo
 | Setting | Value |
 |---------|-------|
 | Web server | XAMPP Apache |
-| Document root | Symlink `apps/api` → `/Applications/XAMPP/xamppfiles/htdocs/api` |
+| Document root | Copy `apps/api` → `/Applications/XAMPP/htdocs/api` (script) or symlink to `xamppfiles/htdocs/api` |
 | Database | `itr_services` on localhost MySQL |
 | DB user | `root` (default XAMPP) |
 | DB password | empty (default XAMPP) |
@@ -32,16 +32,16 @@ Configuration reference for local, staging, and production across all ITR Platfo
 **Setup commands:**
 
 ```bash
-# Symlink API to XAMPP
+# One command: copy apps/api -> htdocs/api, migrate DB, install UIs
+./scripts/setup-local-xampp.sh --start
+```
+
+Manual alternative (symlink instead of copy):
+
+```bash
 ln -sf "$PWD/apps/api" /Applications/XAMPP/xamppfiles/htdocs/api
-
-# Create config from template
 cp apps/api/include/config.local.php.example apps/api/include/config.php
-
-# Database setup
-open http://localhost/api/setup.php
-
-# Composer deps (payments)
+php apps/api/migrations/bootstrap_local.php
 cd apps/api && composer install
 ```
 
@@ -82,6 +82,22 @@ npm run dev
 ```
 
 Open: http://localhost:5173/admin/
+
+### Website (`apps/itr_web/FINAPP`)
+
+| Setting | Value |
+|---------|-------|
+| Dev server | Vite on port 5174 |
+| API proxy | `/api` → `http://localhost/api` |
+| Env file | `.env.local` with empty `VITE_API_BASE_URL` |
+
+```bash
+cd apps/itr_web/FINAPP
+npm install
+npm run dev
+```
+
+Open: http://localhost:5174/services
 
 ### Mobile (`apps/mobile/tax_client`)
 
