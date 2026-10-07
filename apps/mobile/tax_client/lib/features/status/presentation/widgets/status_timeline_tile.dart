@@ -39,8 +39,8 @@ class StatusTimelineTile extends StatelessWidget {
     final Color dotColor = isCompleted
         ? Colors.green
         : isActive
-            ? scheme.primary
-            : scheme.outlineVariant;
+        ? scheme.primary
+        : scheme.outlineVariant;
 
     final Color lineColor = isCompleted ? Colors.green : scheme.outlineVariant;
 
@@ -52,12 +52,10 @@ class StatusTimelineTile extends StatelessWidget {
         ? scheme.onSurface
         : scheme.onSurface.withOpacity(0.5);
 
-    final bool hasUpdates = statusUpdates != null &&
-        statusUpdates!.isNotEmpty &&
-        (isActive || isCompleted);
+    final bool hasUpdates = statusUpdates != null && statusUpdates!.isNotEmpty;
 
     final bool hasExpert =
-        expertInfo != null && expertInfo!.professionalName != null && (isActive || isCompleted);
+        expertInfo != null && expertInfo!.professionalName != null;
 
     return FadeTransition(
       opacity: animation,
@@ -93,7 +91,11 @@ class StatusTimelineTile extends StatelessWidget {
                         border: Border.all(color: Colors.white, width: 2),
                       ),
                       child: isCompleted
-                          ? const Icon(Icons.check, size: 14, color: Colors.white)
+                          ? const Icon(
+                              Icons.check,
+                              size: 14,
+                              color: Colors.white,
+                            )
                           : null,
                     ),
                   ),
@@ -147,7 +149,8 @@ class StatusTimelineTile extends StatelessWidget {
                         ),
 
                         // ── Fallback subtitle (only when no updates and no expert) ──
-                        if (!hasUpdates && !hasExpert &&
+                        if (!hasUpdates &&
+                            !hasExpert &&
                             subtitle != null &&
                             (isActive || isCompleted)) ...[
                           const SizedBox(height: 4),
@@ -218,7 +221,16 @@ class _StatusUpdateRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isResolved = update.status == 'resolved';
+    final status = (update.status ?? '').trim().toLowerCase();
+    final isResolved =
+        (update.resolvedAt ?? '').trim().isNotEmpty ||
+        status == 'resolved' ||
+        status == 'closed' ||
+        status == 'submitted' ||
+        status == 'reverification' ||
+        status == 'under_review';
+    final shouldShowUploadAction =
+        !isResolved && onActionTap != null && _isDocumentIssue(update.message);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -258,15 +270,25 @@ class _StatusUpdateRow extends StatelessWidget {
                 ),
               ),
             ),
-            // Only show action button for pending items
-            if (!isResolved) ...[
+            // Pending document issue => show upload CTA.
+            if (shouldShowUploadAction) ...[
               const SizedBox(width: 8),
               _ActionButton(onTap: onActionTap),
+            ] else if (isResolved) ...[
+              const SizedBox(width: 8),
+              const _ReverificationBadge(),
             ],
           ],
         ),
       ),
     );
+  }
+
+  bool _isDocumentIssue(String? message) {
+    final text = (message ?? '').toLowerCase();
+    return text.contains('document') ||
+        text.contains('upload') ||
+        text.contains('file');
   }
 }
 
@@ -305,6 +327,37 @@ class _ActionButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ReverificationBadge extends StatelessWidget {
+  const _ReverificationBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.autorenew_rounded, size: 13, color: Colors.blue),
+          SizedBox(width: 4),
+          Text(
+            'Reverification',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.blue,
+            ),
+          ),
+        ],
       ),
     );
   }

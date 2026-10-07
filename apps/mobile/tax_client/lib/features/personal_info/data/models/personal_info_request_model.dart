@@ -17,6 +17,8 @@ class PersonalInfoRequestModel {
   final String country;
   final String journeyType;
   final int? packageId;
+  final int? associateId;
+  final int? serviceId;
 
   PersonalInfoRequestModel({
     required this.panNumber,
@@ -32,6 +34,8 @@ class PersonalInfoRequestModel {
     required this.country,
     required this.journeyType,
     this.packageId,
+    this.associateId,
+    this.serviceId,
   });
 
   factory PersonalInfoRequestModel.fromJson(Map<String, dynamic> json) =>

@@ -480,11 +480,67 @@ if ($method === 'GET') {
                 }
             }
             
+            // Payment + acknowledgement + unified display status (sync with mobile)
+            $hasPaymentSuccess = false;
+            foreach ($payments as $p) {
+                if (strtolower(trim($p['paymentStatus'] ?? '')) === 'success') {
+                    $hasPaymentSuccess = true;
+                    break;
+                }
+            }
+
+            $ackNumber = null;
+            $primaryItrId = !empty($itrIds) ? (int) $itrIds[0] : null;
+            if ($primaryItrId) {
+                $ackTableCheck = $conn->query("SHOW TABLES LIKE 'itr_acknowledgement'");
+                if ($ackTableCheck && $ackTableCheck->num_rows > 0) {
+                    $ackRes = $conn->query(
+                        "SELECT acknowledgement_number FROM itr_acknowledgement WHERE itr_id = $primaryItrId ORDER BY id DESC LIMIT 1"
+                    );
+                    if ($ackRes && $ackRes->num_rows > 0) {
+                        $ackRow = $ackRes->fetch_assoc();
+                        $ackNumber = $ackRow['acknowledgement_number'] ?? null;
+                    }
+                }
+            }
+
+            $hasActiveAssignment = false;
+            foreach ($assignments as $a) {
+                if (!empty($a['isActive'])) {
+                    $hasActiveAssignment = true;
+                    break;
+                }
+            }
+
+            $statusMeta = StatusHelper::resolveAdminDisplayStatus(
+                $hasPaymentSuccess,
+                $ackNumber,
+                $statusSteps,
+                $hasActiveAssignment
+            );
+
+            if (($ackNumber === null || trim((string) $ackNumber) === '') && $statusMeta['displayStatus'] === 'COMPLETED') {
+                foreach ($statusSteps as $step) {
+                    if (($step['statusStep'] ?? '') === 'acknowledgement_generated' && !empty($step['isCompleted'])) {
+                        $notes = trim($step['notes'] ?? '');
+                        if ($notes !== '') {
+                            $ackNumber = $notes;
+                        }
+                        break;
+                    }
+                }
+            }
+
             // Build the ITR record
             $itrs[] = [
                 "personalDetailId" => (int)$row['personal_detail_id'],
                 "userId" => (int)$row['UserId'],
                 "panNumber" => $row['PANNumber'],
+                "displayStatus" => $statusMeta['displayStatus'],
+                "statusDisplayText" => $statusMeta['displayText'],
+                "itrStatus" => $statusMeta['itrStatus'],
+                "hasSuccessfulPayment" => $statusMeta['hasSuccessfulPayment'],
+                "acknowledgementNumber" => $ackNumber,
                 "personalDetails" => [
                     "firstName" => $row['FirstName'],
                     "middleName" => $row['MiddleName'],
@@ -587,7 +643,17 @@ elseif ($method === 'PUT') {
         exit;
     }
 
-    $allowedStatuses = ['PENDING', 'ASSIGNED', 'REQUIRED', 'INCORRECT', 'FILED', 'COMPLETED'];
+    if (strtoupper($status) === 'COMPLETED') {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "statusCode" => 400,
+            "data" => ["message" => "Use Mark ITR Complete (submit_acknowledgement.php) with an acknowledgement number to mark completed"]
+        ]);
+        exit;
+    }
+
+    $allowedStatuses = ['PENDING', 'ASSIGNED', 'REQUIRED', 'INCORRECT', 'FILED'];
     if (!in_array(strtoupper($status), $allowedStatuses)) {
         http_response_code(400);
         echo json_encode([

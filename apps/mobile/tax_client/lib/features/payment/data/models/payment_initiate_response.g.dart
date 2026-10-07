@@ -16,6 +16,7 @@ PaymentInitiateResponse _$PaymentInitiateResponseFromJson(
   amount: (json['amount'] as num).toDouble(),
   currency: json['currency'] as String,
   merchantId: json['merchant_id'] as String,
+  razorpayOrderId: json['razorpay_order_id'] as String?,
   message: json['message'] as String,
 );
 
@@ -29,5 +30,6 @@ Map<String, dynamic> _$PaymentInitiateResponseToJson(
   'amount': instance.amount,
   'currency': instance.currency,
   'merchant_id': instance.merchantId,
+  'razorpay_order_id': instance.razorpayOrderId,
   'message': instance.message,
 };

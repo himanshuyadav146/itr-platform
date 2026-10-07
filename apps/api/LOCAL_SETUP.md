@@ -2,6 +2,14 @@
 
 Complete guide to run the ITR API project on your local machine.
 
+**Mac + XAMPP (recommended):** from the repo root, with Apache and MySQL already started:
+
+```bash
+./scripts/setup-local-xampp.sh --start
+```
+
+That copies `apps/api` into `htdocs/api` (old folder is renamed `api.bak.*`), runs the associate-marketplace migration, seeds demo logins, and starts admin (`:5173`) + website (`:5174`). Details are in the root `README.md` one-command section. The steps below are the manual equivalent.
+
 ---
 
 ## 📋 Prerequisites

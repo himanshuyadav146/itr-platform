@@ -14,71 +14,88 @@ import 'package:tax_client/features/personal_info/presentation/screens/personal_
 import 'package:tax_client/features/personal_info/presentation/screens/itr_list_screen.dart';
 import 'package:tax_client/features/personal_info/data/models/itr_personal_detail_model.dart';
 import 'package:tax_client/features/payment/presentation/screens/payment_screen.dart';
+import 'package:tax_client/features/tax_calculator/presentation/screens/tax_calculator_screen.dart';
 
 import '../../features/document_upload/presentation/screens/upload_documents_screen.dart';
 import 'package:tax_client/features/status/presentation/screens/status_screen.dart';
-import '../../features/splash/presentation/screens/splash_screen.dart';
+import 'package:tax_client/features/associates/presentation/screens/services_screen.dart';
+import 'package:tax_client/features/associates/presentation/screens/associates_screen.dart';
+import 'package:tax_client/features/associates/presentation/screens/associate_detail_screen.dart';
+import 'package:tax_client/core/common/screens/web_content_screen.dart';
+import 'package:tax_client/core/services/analytics/analytics_service.dart';
 
 class AppRouter {
   static GoRouter? _router;
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+  static final RouteObserver<ModalRoute<void>> routeObserver =
+      RouteObserver<ModalRoute<void>>();
 
   static GoRouter? get router => _router;
 
   static GoRouter buildRouter({required String initialLocation}) {
     _router = GoRouter(
+      navigatorKey: navigatorKey,
       initialLocation: initialLocation,
+      observers: [routeObserver, AnalyticsService.observer],
       // initialLocation: '/document_upload',
       errorBuilder: (context, state) {
         // If route not found, redirect to home or login
-        return initialLocation == '/login' 
-            ? LoginScreen() 
-            : const HomeScreen();
+        return initialLocation == '/login' ? LoginScreen() : const HomeScreen();
       },
       routes: <GoRoute>[
         GoRoute(
           path: '/',
+          name: 'home',
           builder: (BuildContext context, GoRouterState state) {
             return const HomeScreen();
           },
         ),
         GoRoute(
           path: '/login',
+          name: 'login',
           builder: (BuildContext context, GoRouterState state) {
             return LoginScreen();
           },
         ),
         GoRoute(
           path: '/profile',
+          name: 'profile',
           builder: (BuildContext context, GoRouterState state) {
             return const ProfileScreen();
           },
         ),
         GoRoute(
           path: '/settings',
+          name: 'settings',
           builder: (BuildContext context, GoRouterState state) {
             return const SettingsScreen();
           },
         ),
         GoRoute(
           path: '/orders',
+          name: 'orders',
           builder: (BuildContext context, GoRouterState state) {
             return const OrdersScreen();
           },
         ),
         GoRoute(
           path: '/refer_earn',
+          name: 'refer_earn',
           builder: (BuildContext context, GoRouterState state) {
             return const ReferAndEarnScreen();
           },
         ),
         GoRoute(
           path: '/more',
+          name: 'more',
           builder: (BuildContext context, GoRouterState state) {
             return const MoreScreen();
           },
         ),
         GoRoute(
           path: '/personal_info',
+          name: 'personal_info',
           builder: (BuildContext context, GoRouterState state) {
             final itrData = state.extra as ItrPersonalDetailModel?;
             return PersonalInformationScreen(itrData: itrData);
@@ -86,38 +103,78 @@ class AppRouter {
         ),
         GoRoute(
           path: '/itr_list',
+          name: 'itr_list',
           builder: (BuildContext context, GoRouterState state) {
             return const ItrListScreen();
           },
         ),
         GoRoute(
           path: '/register',
+          name: 'signup',
           builder: (BuildContext context, GoRouterState state) {
             return SignUpScreen();
           },
         ),
         GoRoute(
           path: '/forgot-password',
+          name: 'forgot_password',
           builder: (BuildContext context, GoRouterState state) {
             return const ForgetPasswordScreen();
           },
         ),
         GoRoute(
           path: '/document_upload',
+          name: 'document_upload',
           builder: (BuildContext context, GoRouterState state) {
-            return UploadDocumentsScreen();
+            final fromStatus =
+                state.uri.queryParameters['from']?.toLowerCase() == 'status';
+            return UploadDocumentsScreen(fromStatus: fromStatus);
           },
         ),
         GoRoute(
           path: '/payment',
+          name: 'payment',
           builder: (BuildContext context, GoRouterState state) {
             final packageIdStr = state.uri.queryParameters['packageId'];
-            final packageId = packageIdStr != null ? int.tryParse(packageIdStr) ?? 1 : 1;
-            return PaymentScreen(packageId: packageId);
+            final packageId = packageIdStr != null
+                ? int.tryParse(packageIdStr)
+                : null;
+            final associateId = int.tryParse(state.uri.queryParameters['associateId'] ?? '');
+            final serviceId = int.tryParse(state.uri.queryParameters['serviceId'] ?? '');
+            return PaymentScreen(
+              packageId: packageId,
+              associateId: associateId,
+              serviceId: serviceId,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/services',
+          name: 'services',
+          builder: (BuildContext context, GoRouterState state) {
+            return const ServicesScreen();
+          },
+        ),
+        GoRoute(
+          path: '/associates',
+          name: 'associates',
+          builder: (BuildContext context, GoRouterState state) {
+            final serviceId = int.tryParse(state.uri.queryParameters['serviceId'] ?? '');
+            return AssociatesScreen(serviceId: serviceId);
+          },
+        ),
+        GoRoute(
+          path: '/associates/:id',
+          name: 'associate_detail',
+          builder: (BuildContext context, GoRouterState state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            final serviceId = int.tryParse(state.uri.queryParameters['serviceId'] ?? '');
+            return AssociateDetailScreen(associateId: id, serviceId: serviceId);
           },
         ),
         GoRoute(
           path: '/status',
+          name: 'status',
           builder: (BuildContext context, GoRouterState state) {
             ItrPersonalDetailModel? itrData;
             String? orderId;
@@ -130,14 +187,31 @@ class AppRouter {
                 orderId = map['orderId'] as String?;
               }
             }
-            
+
             return StatusScreen(itrData: itrData, orderId: orderId);
           },
         ),
         GoRoute(
+          path: '/tax_calculator',
+          name: 'tax_calculator',
+          builder: (BuildContext context, GoRouterState state) {
+            return const TaxCalculatorScreen();
+          },
+        ),
+        GoRoute(
           path: '/splash',
+          name: 'splash',
           builder: (BuildContext context, GoRouterState state) {
             return const SplashScreen();
+          },
+        ),
+        GoRoute(
+          path: '/web',
+          name: 'web_content',
+          builder: (BuildContext context, GoRouterState state) {
+            final path = state.uri.queryParameters['path'] ?? '/';
+            final title = state.uri.queryParameters['title'] ?? 'FinApp';
+            return WebContentScreen(path: path, title: title);
           },
         ),
       ],

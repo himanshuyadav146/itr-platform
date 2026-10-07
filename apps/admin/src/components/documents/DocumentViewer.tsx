@@ -1,6 +1,18 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box } from '@mui/material';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Box,
+  Alert,
+  Typography,
+  IconButton,
+  Tooltip,
+} from '@mui/material';
+import { ContentCopy as CopyIcon } from '@mui/icons-material';
 import type { Document } from '../../api/documents';
-import { documentsApi } from '../../api/documents';
+import { documentsApi, getDocumentCategory } from '../../api/documents';
 
 interface DocumentViewerProps {
   open: boolean;
@@ -8,6 +20,19 @@ interface DocumentViewerProps {
   /** Client PAN for `/uploads/{PAN}/{fileName}` URLs */
   panNumber?: string;
   onClose: () => void;
+}
+
+async function copyToClipboard(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
 }
 
 export const DocumentViewer = ({ open, document, panNumber, onClose }: DocumentViewerProps) => {
@@ -30,10 +55,49 @@ export const DocumentViewer = ({ open, document, panNumber, onClose }: DocumentV
     (document.fileType === 'application/pdf' || /\.pdf$/i.test(document.fileName || ''));
   const imageSrc = isImage ? viewUrl : '';
 
+  const category = getDocumentCategory(document);
+  const isForm16 = category === 'Form-16 A' || category === 'Form-16 B';
+  const pdfPassword = document.filePassword?.trim() ?? '';
+  const hasPassword = pdfPassword.length > 0;
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>{document.documentName}</DialogTitle>
       <DialogContent>
+        {isForm16 && (
+          <Alert
+            severity={hasPassword ? 'info' : 'warning'}
+            sx={{ mb: 2 }}
+            action={
+              hasPassword ? (
+                <Tooltip title="Copy password">
+                  <IconButton
+                    size="small"
+                    color="inherit"
+                    aria-label="Copy PDF password"
+                    onClick={() => void copyToClipboard(pdfPassword)}
+                  >
+                    <CopyIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              ) : undefined
+            }
+          >
+            {hasPassword ? (
+              <Typography variant="body2">
+                This PDF may be password protected. Use this password to open the file:{' '}
+                <Box component="span" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>
+                  {pdfPassword}
+                </Box>
+              </Typography>
+            ) : (
+              <Typography variant="body2">
+                No PDF password was provided by the client. If the file is locked, contact the
+                client for the password.
+              </Typography>
+            )}
+          </Alert>
+        )}
         <Box sx={{ minHeight: 400, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           {isImage && imageSrc ? (
             <img
@@ -66,4 +130,3 @@ export const DocumentViewer = ({ open, document, panNumber, onClose }: DocumentV
     </Dialog>
   );
 };
-

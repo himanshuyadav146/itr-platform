@@ -38,7 +38,20 @@ export const authApi = {
   },
 
   registerProfessional: async (data: RegisterProfessionalData): Promise<ApiResponse> => {
-    const response = await apiClient.post<ApiResponse>(API_ENDPOINTS.REGISTER_PROFESSIONAL, data);
+    // Backend signup.php expects `mobile` + `role`.
+    // Keep legacy keys too for compatibility with older deployments.
+    const payload = {
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      mobile: data.phone,
+      role: data.occupation,
+      phone: data.phone,
+      occupation: data.occupation,
+      icai_membership_no: (data as any).icai_membership_no,
+      city: (data as any).city,
+    };
+    const response = await apiClient.post<ApiResponse>(API_ENDPOINTS.REGISTER_PROFESSIONAL, payload);
     return response.data;
   },
 

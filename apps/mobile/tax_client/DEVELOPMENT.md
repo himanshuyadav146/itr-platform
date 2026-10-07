@@ -236,7 +236,8 @@ MaterialApp.router(
 | Token | Hex | Maps to |
 |-------|-----|---------|
 | `brandNavy` | `#1E1E2C` | `scaffoldBackgroundColor` |
-| `brandNavyLight` | `#2D2D44` | `surface`, bottom nav |
+| `brandNavyLight` | `#2D2D44` | `surface` (elevated cards) |
+| `navBarBackground` / `navBarGradient` | `#0B1326` | Bottom tab bar (Figma `Nav`) |
 | `brandNavyMuted` | `#3D3D5C` | `surfaceContainerHighest` |
 | `primary` | `#448AFF` | `primary` |
 | `secondary` | `#FF7D2E` | `secondary` |

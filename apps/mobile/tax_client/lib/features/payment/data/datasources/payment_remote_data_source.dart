@@ -10,9 +10,16 @@ final paymentRemoteDataSourceProvider =
 });
 
 abstract class PaymentRemoteDataSource {
-  Future<PaymentInfoData> getPaymentInfo(int packageId);
+  Future<PaymentInfoData> getPaymentInfo({
+    int? packageId,
+    int? associateId,
+    int? serviceId,
+    String? panNumber,
+  });
   Future<PaymentInitiateResponse> initiatePayment({
-    required int packageId,
+    int? packageId,
+    int? associateId,
+    int? serviceId,
     String? panNumber,
   });
   Future<Map<String, dynamic>> getPaymentStatus({
@@ -36,9 +43,20 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
   PaymentRemoteDataSourceImpl(this.apiClient);
 
   @override
-  Future<PaymentInfoData> getPaymentInfo(int packageId) async {
+  Future<PaymentInfoData> getPaymentInfo({
+    int? packageId,
+    int? associateId,
+    int? serviceId,
+    String? panNumber,
+  }) async {
+    final params = <String>[];
+    if (packageId != null) params.add('packageId=$packageId');
+    if (associateId != null) params.add('associateId=$associateId');
+    if (serviceId != null) params.add('serviceId=$serviceId');
+    if (panNumber != null && panNumber.isNotEmpty) params.add('panNumber=$panNumber');
+    final query = params.isEmpty ? '' : '?${params.join('&')}';
     final response = await apiClient.get(
-      '${ApiConstants.paymentGetPaymentInfo}?packageId=$packageId',
+      '${ApiConstants.paymentGetPaymentInfo}$query',
       (json) => PaymentInfoData.fromJson(json),
     );
 
@@ -47,12 +65,21 @@ class PaymentRemoteDataSourceImpl implements PaymentRemoteDataSource {
 
   @override
   Future<PaymentInitiateResponse> initiatePayment({
-    required int packageId,
+    int? packageId,
+    int? associateId,
+    int? serviceId,
     String? panNumber,
   }) async {
-    final requestBody = <String, dynamic>{
-      'packageId': packageId,
-    };
+    final requestBody = <String, dynamic>{};
+    if (packageId != null) {
+      requestBody['packageId'] = packageId;
+    }
+    if (associateId != null) {
+      requestBody['associateId'] = associateId;
+    }
+    if (serviceId != null) {
+      requestBody['serviceId'] = serviceId;
+    }
     
     if (panNumber != null && panNumber.isNotEmpty) {
       requestBody['panNumber'] = panNumber;
