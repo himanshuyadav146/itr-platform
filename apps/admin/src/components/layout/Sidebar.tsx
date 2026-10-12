@@ -14,13 +14,11 @@ import {
   Description as DescriptionIcon,
   Group as GroupIcon,
   Inventory2 as PackagesIcon,
-  Badge as ProfileIcon,
-  Category as ServicesIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import { usePermissions } from '../../hooks/usePermissions';
-import { UserRole } from '../../types/enums';
+import { UserRole, Permission } from '../../types/enums';
 
 const drawerWidth = 240;
 
@@ -29,11 +27,12 @@ interface MenuItem {
   icon: React.ReactNode;
   path: string;
   roles?: UserRole[];
+  permission?: Permission;
 }
 
 const menuItems: MenuItem[] = [
   {
-    text: 'Pending Review',
+    text: 'Dashboard',
     icon: <DashboardIcon />,
     path: '/dashboard',
   },
@@ -44,26 +43,15 @@ const menuItems: MenuItem[] = [
     roles: [UserRole.ADMIN],
   },
   {
-    text: 'Assigned Filings',
+    text: 'ITRs',
     icon: <DescriptionIcon />,
     path: '/itrs',
   },
   {
-    text: 'Approvals Queue',
+    text: 'Associates',
     icon: <GroupIcon />,
     path: '/professionals',
-    roles: [UserRole.ADMIN],
-  },
-  {
-    text: 'Services Catalog',
-    icon: <ServicesIcon />,
-    path: '/services',
-    roles: [UserRole.ADMIN],
-  },
-  {
-    text: 'My Profile',
-    icon: <ProfileIcon />,
-    path: '/profile',
+    permission: Permission.ASSIGN_ITR,
   },
   {
     text: 'Packages',
@@ -77,11 +65,16 @@ export const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { sidebarOpen } = useAppSelector((state) => state.ui);
-  const { role } = usePermissions();
+  const { role, hasPermission, isAdmin } = usePermissions();
 
   const normalizedRole = role?.toString().toUpperCase().trim() ?? null;
 
   const filteredMenuItems = menuItems.filter((item) => {
+    // Check permission-based access (same logic as Assignment button)
+    if (item.permission) {
+      return hasPermission(item.permission) || isAdmin;
+    }
+    // Role-based access: compare case-insensitively so "admin" / "ADMIN" both work
     if (!item.roles) return true;
     return normalizedRole != null && item.roles.some((r) => r === normalizedRole);
   });

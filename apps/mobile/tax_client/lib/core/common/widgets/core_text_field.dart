@@ -13,14 +13,6 @@ class CoreTextField extends StatelessWidget {
   final int? minLines;
   final int? maxLines;
   final TextInputAction? textInputAction;
-  final bool useInlineLabel;
-  final TextStyle? textStyle;
-  final TextStyle? hintStyle;
-  final Color? fillColor;
-  final Color? enabledBorderColor;
-  final Color? focusedBorderColor;
-  final double? borderRadius;
-  final EdgeInsetsGeometry? contentPadding;
 
   const CoreTextField({
     super.key,
@@ -36,60 +28,11 @@ class CoreTextField extends StatelessWidget {
     this.minLines,
     this.maxLines = 1,
     this.textInputAction,
-    this.useInlineLabel = true,
-    this.textStyle,
-    this.hintStyle,
-    this.fillColor,
-    this.enabledBorderColor,
-    this.focusedBorderColor,
-    this.borderRadius,
-    this.contentPadding,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final style = textStyle ?? theme.textTheme.bodyLarge;
-    final radius = borderRadius ?? 12;
-
-    final decoration = InputDecoration(
-      labelText: useInlineLabel ? label : null,
-      hintText: hintText,
-      hintStyle: hintStyle,
-      prefixIcon: prefixIcon,
-      suffixIcon: suffixIcon,
-      filled: fillColor != null ? true : null,
-      fillColor: fillColor,
-      contentPadding: contentPadding,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: BorderSide(
-          color: enabledBorderColor ?? colorScheme.outlineVariant,
-        ),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: BorderSide(
-          color: enabledBorderColor ?? colorScheme.outlineVariant,
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: BorderSide(
-          color: focusedBorderColor ?? colorScheme.primary,
-          width: 1.5,
-        ),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: BorderSide(color: colorScheme.error),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: BorderSide(color: colorScheme.error),
-      ),
-    );
+    final style = Theme.of(context).textTheme.bodyLarge;
 
     if (validator != null) {
       return TextFormField(
@@ -102,7 +45,12 @@ class CoreTextField extends StatelessWidget {
         textInputAction: textInputAction,
         onChanged: onChanged,
         validator: validator,
-        decoration: decoration,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hintText,
+          prefixIcon: prefixIcon,
+          suffixIcon: suffixIcon,
+        ),
       );
     }
 
@@ -115,7 +63,12 @@ class CoreTextField extends StatelessWidget {
       maxLines: maxLines,
       textInputAction: textInputAction,
       onChanged: onChanged,
-      decoration: decoration,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hintText,
+        prefixIcon: prefixIcon,
+        suffixIcon: suffixIcon,
+      ),
     );
   }
 }

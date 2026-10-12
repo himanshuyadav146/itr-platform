@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tax_client/core/error/failures.dart';
-import 'package:tax_client/core/services/analytics/analytics_service.dart';
 import 'package:tax_client/features/auth/domain/usecases/forget_password.dart';
 import 'package:tax_client/features/auth/domain/usecases/login.dart';
 import 'package:tax_client/features/auth/domain/usecases/logout.dart';
@@ -22,16 +21,9 @@ class AuthViewModel extends StateNotifier<AuthState> {
   Future<void> login(String email, String password) async {
     state = const AuthLoading();
     final result = await _login(LoginParams(email: email, password: password));
-    // Update UI first — never wait on Analytics.
     state = result.fold(
-      (failure) {
-        AnalyticsService.logLogin(success: false);
-        return AuthError(_getErrorMessage(failure));
-      },
-      (data) {
-        AnalyticsService.logLogin(success: true);
-        return AuthAuthenticated(user: data.user, token: data.token);
-      },
+      (failure) => AuthError(_getErrorMessage(failure)),
+      (data) => AuthAuthenticated(user: data.user, token: data.token),
     );
   }
 
@@ -50,16 +42,9 @@ class AuthViewModel extends StateNotifier<AuthState> {
         password: password,
       ),
     );
-    // Update UI first — never wait on Analytics.
     state = result.fold(
-      (failure) {
-        AnalyticsService.logSignUp(success: false);
-        return AuthError(_getErrorMessage(failure));
-      },
-      (message) {
-        AnalyticsService.logSignUp(success: true);
-        return AuthRegistered(message: message);
-      },
+      (failure) => AuthError(_getErrorMessage(failure)),
+      (message) => AuthRegistered(message: message),
     );
   }
 

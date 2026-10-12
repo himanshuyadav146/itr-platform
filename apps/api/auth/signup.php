@@ -80,31 +80,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $firstName = mysqli_real_escape_string($conn, $firstName);
     $middleName = mysqli_real_escape_string($conn, $middleName);
     $lastName = mysqli_real_escape_string($conn, $lastName);
-    // Accept both mobile (new) and phone (legacy admin payload)
-    $mobileInput = $data['mobile'] ?? ($data['phone'] ?? '');
-    $mobile = mysqli_real_escape_string($conn, $mobileInput);
+    $mobile = mysqli_real_escape_string($conn, $data['mobile'] ?? '');
     $password = mysqli_real_escape_string($conn, $data['password'] ?? '');
     $platform = mysqli_real_escape_string($conn, $data['platform'] ?? 'web');
     $version = mysqli_real_escape_string($conn, $data['version'] ?? '1.0');
     
-    // Public signup is CLIENT only. Associates use /auth/register_associate.php.
-    // Never accept ADMIN (or other staff roles) from this public endpoint.
-    $roleRaw = $data['role'] ?? ($data['Role'] ?? ($data['occupation'] ?? null));
-    $role = $roleRaw ? strtoupper(trim($roleRaw)) : 'CLIENT';
-    $blockedRoles = ['ADMIN', 'ACCOUNTANT', 'CA', 'TAX_EXPERT'];
-    if (in_array($role, $blockedRoles, true)) {
-        $response = [
-            "statusCode" => 403,
-            "status" => "error",
-            "data" => [
-                "message" => "Public signup is for clients only. Associates should register at /auth/register_associate.php. Admin accounts are not created from the public site."
-            ]
-        ];
-        http_response_code(403);
-        echo json_encode($response);
-        exit;
+    // Handle Role - validate against ENUM values (accept both 'role' and 'Role')
+    $validRoles = ['CLIENT', 'ADMIN', 'ACCOUNTANT', 'CA'];
+    $role = isset($data['role']) ? strtoupper(trim($data['role'])) : (isset($data['Role']) ? strtoupper(trim($data['Role'])) : 'CLIENT');
+    
+    // Validate Role - if invalid, default to CLIENT
+    if (!in_array($role, $validRoles)) {
+        $role = 'CLIENT';
     }
-    $role = 'CLIENT';
     
     $role = mysqli_real_escape_string($conn, $role);
 

@@ -77,7 +77,6 @@ ssl/
 apps/admin/.git/
 apps/api/.git/
 apps/mobile/tax_client/.git/
-apps/itr_web/FINAPP/.git/
 
 # -----------------------------------------------------------------------------
 # Node.js — Admin panel (apps/admin)
@@ -167,7 +166,6 @@ apps/mobile/tax_client/**/DerivedData/
 tmp/
 temp/
 .cache/
-.local-dev-logs/
 
 # -----------------------------------------------------------------------------
 # Backups & archives (generated, not source)

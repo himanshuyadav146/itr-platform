@@ -33,8 +33,6 @@ class PersonalInfoViewModel extends StateNotifier<PersonalInfoState> {
     required String country,
     required String journeyType,
     int? packageId,
-    int? associateId,
-    int? serviceId,
   }) async {
     state = const PersonalInfoLoading();
 
@@ -52,8 +50,6 @@ class PersonalInfoViewModel extends StateNotifier<PersonalInfoState> {
       country: country,
       journeyType: journeyType,
       packageId: packageId,
-      associateId: associateId,
-      serviceId: serviceId,
     );
 
     final result = await _addPersonalDetails(params);

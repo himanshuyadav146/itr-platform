@@ -22,8 +22,6 @@ PersonalInfoRequestModel _$PersonalInfoRequestModelFromJson(
   country: json['country'] as String,
   journeyType: json['journeyType'] as String,
   packageId: (json['packageId'] as num?)?.toInt(),
-  associateId: (json['associateId'] as num?)?.toInt(),
-  serviceId: (json['serviceId'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$PersonalInfoRequestModelToJson(
@@ -42,6 +40,4 @@ Map<String, dynamic> _$PersonalInfoRequestModelToJson(
   'country': instance.country,
   'journeyType': instance.journeyType,
   'packageId': instance.packageId,
-  'associateId': instance.associateId,
-  'serviceId': instance.serviceId,
 };

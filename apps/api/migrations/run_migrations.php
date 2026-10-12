@@ -32,8 +32,7 @@ echo "{$GREEN}✓ Database connection successful{$NC}\n\n";
 $migrations = [
     'add_turnover_to_packages.sql',
     'add_package_id_to_personal_details.sql',
-    'insert_frontend_packages.sql',
-    'add_associate_marketplace.sql',
+    'insert_frontend_packages.sql'
 ];
 
 $successCount = 0;

@@ -19,30 +19,28 @@ class RazorpayService {
         (keyId.startsWith('rzp_test_') || keyId.startsWith('rzp_live_'))
         ? keyId
         : 'rzp_test_RitzIiBaMb6qnZ';
-
+    
     // Extract amount from paymentInfo (grand_total)
-    final grandTotal = paymentInfo.paymentSummary.firstWhere(
-      (item) => item.type == 'grand_total',
-    );
+    final grandTotal = paymentInfo.paymentSummary
+        .firstWhere((item) => item.type == 'grand_total');
     final amountPaise = (grandTotal.amount * 100).toInt();
-
+    
     // Extract user details from paymentInfo
     final userName = paymentInfo.orderDetails.name;
     final userEmail = paymentInfo.orderDetails.email;
     final userPhone = paymentInfo.orderDetails.phone;
-
+    
     // Build Razorpay options with data from paymentInfo
     final options = {
       'key': effectiveKey,
       'amount': amountPaise,
-      if (initiateResponse.razorpayOrderId != null &&
-          initiateResponse.razorpayOrderId!.isNotEmpty)
-        'order_id': initiateResponse.razorpayOrderId,
       'name': userName,
       'description': 'ITR Filing Payment',
       'currency': 'INR',
-      'prefill': {'contact': userPhone, 'email': userEmail},
-      'method': {'upi': true, 'card': true, 'netbanking': true, 'wallet': true},
+      'prefill': {
+        'contact': userPhone,
+        'email': userEmail,
+      },
       'theme': {'color': '#1F6FEB'},
     };
 
@@ -50,9 +48,7 @@ class RazorpayService {
     _razorpay.clear();
 
     // Handle payment success - capture response data
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, (
-      PaymentSuccessResponse response,
-    ) {
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, (PaymentSuccessResponse response) {
       final responseData = {
         'payment_id': response.paymentId,
         'order_id': response.orderId,
@@ -64,9 +60,7 @@ class RazorpayService {
     });
 
     // Handle payment error - capture response data
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, (
-      PaymentFailureResponse response,
-    ) {
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, (PaymentFailureResponse response) {
       final responseData = {
         'code': response.code?.toString(),
         'message': response.message,
@@ -76,9 +70,7 @@ class RazorpayService {
       onError(responseData);
     });
 
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, (
-      ExternalWalletResponse response,
-    ) {
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, (ExternalWalletResponse response) {
       // Handle external wallet if needed
     });
 

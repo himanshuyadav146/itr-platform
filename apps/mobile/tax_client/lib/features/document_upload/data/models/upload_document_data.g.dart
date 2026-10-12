@@ -10,7 +10,6 @@ UploadDocumentData _$UploadDocumentDataFromJson(Map<String, dynamic> json) =>
     UploadDocumentData(
       message: json['message'] as String,
       fileUrl: json['fileUrl'] as String?,
-      filePath: json['filePath'] as String?,
       fileName: json['fileName'] as String?,
     );
 
@@ -18,6 +17,5 @@ Map<String, dynamic> _$UploadDocumentDataToJson(UploadDocumentData instance) =>
     <String, dynamic>{
       'message': instance.message,
       'fileUrl': instance.fileUrl,
-      'filePath': instance.filePath,
       'fileName': instance.fileName,
     };
