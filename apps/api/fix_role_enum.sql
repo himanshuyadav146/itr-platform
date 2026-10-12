@@ -7,7 +7,7 @@
 
 -- Change the role column from ENUM('CLIENT','ADMIN') to ENUM('CLIENT','ADMIN','ACCOUNTANT','CA')
 ALTER TABLE `users` 
-MODIFY COLUMN `role` ENUM('CLIENT', 'ADMIN', 'ACCOUNTANT', 'CA') DEFAULT 'CLIENT';
+MODIFY COLUMN `role` ENUM('CLIENT', 'ADMIN', 'ACCOUNTANT', 'CA', 'TAX_EXPERT') DEFAULT 'CLIENT';
 
 -- Verification: Check the updated column
 DESCRIBE users;

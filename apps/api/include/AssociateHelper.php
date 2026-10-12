@@ -143,6 +143,21 @@ class AssociateHelper
         return trim(($user['FirstName'] ?? '') . ' ' . ($user['MiddleName'] ?? '') . ' ' . ($user['LastName'] ?? ''));
     }
 
+    public static function syncMissingProfiles($conn)
+    {
+        if (!self::tableExists($conn, 'associate_profiles') || !self::tableExists($conn, 'users')) {
+            return;
+        }
+        $conn->query(
+            "INSERT INTO associate_profiles (user_id, role, approval_status, created_at)
+             SELECT u.UserId, UPPER(u.role), 'pending', NOW()
+             FROM users u
+             LEFT JOIN associate_profiles p ON p.user_id = u.UserId
+             WHERE UPPER(u.role) IN ('CA', 'ACCOUNTANT', 'TAX_EXPERT')
+               AND p.user_id IS NULL"
+        );
+    }
+
     public static function ensureProfile($conn, $userId, $role = 'CA')
     {
         if (!self::tableExists($conn, 'associate_profiles')) {

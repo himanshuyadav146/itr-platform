@@ -126,8 +126,28 @@ export const usersApi = {
   },
 
   getUserDetails: async (id: number): Promise<UserDetails> => {
-    const response = await apiClient.get<ApiResponse<UserDetails>>(API_ENDPOINTS.USER_DETAILS(id));
-    return response.data.data;
+    const response = await apiClient.get<ApiResponse<any>>(API_ENDPOINTS.USER_DETAILS(id));
+    const payload = response.data?.data ?? response.data;
+    const user = payload?.user ?? payload ?? {};
+    const stats = user.statistics ?? {};
+    const role = String(user.role || user.Role || '').toUpperCase();
+
+    return {
+      UserId: user.userId || user.UserId || id,
+      FirstName: user.firstName || user.FirstName || '',
+      MiddleName: user.middleName || user.MiddleName || '',
+      LastName: user.lastName || user.LastName || '',
+      Email: user.email || user.Email || '',
+      Mobile: user.mobile || user.Mobile || '',
+      role: (role || undefined) as UserDetails['role'],
+      Platform: user.platform || user.Platform,
+      Version: user.version || user.Version,
+      CreatedAt: user.createdAt || user.CreatedAt,
+      UpdatedAt: user.updatedAt || user.UpdatedAt,
+      totalITRsAssigned: stats.itrCount ?? user.assignedCount ?? user.totalITRsAssigned ?? 0,
+      totalITRsFiled: user.completedCount ?? user.totalITRsFiled ?? 0,
+      revenueGenerated: stats.totalSpent ?? user.totalSpent ?? user.revenueGenerated ?? 0,
+    };
   },
 
   getUserStats: async (id: number): Promise<UserStats> => {

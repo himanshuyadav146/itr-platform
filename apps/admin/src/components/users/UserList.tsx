@@ -32,7 +32,15 @@ const columns: GridColDef[] = [
     field: 'role',
     headerName: 'Role',
     width: 120,
-    valueGetter: (value) => value || 'CLIENT',
+    valueGetter: (value) => {
+      const role = String(value || '').toUpperCase();
+      if (role === 'TAX_EXPERT') return 'Tax Expert';
+      if (role === 'ACCOUNTANT') return 'Accountant';
+      if (role === 'ADMIN') return 'Admin';
+      if (role === 'CA') return 'CA';
+      if (role === 'CLIENT') return 'Client';
+      return role || '—';
+    },
   },
   {
     field: 'totalITRsAssigned',

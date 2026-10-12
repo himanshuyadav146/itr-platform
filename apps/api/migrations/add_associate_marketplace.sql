@@ -94,3 +94,11 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM `services` WHERE `Name` = 'Tax Consult
 INSERT INTO `services` (`Name`, `description`, `is_active`)
 SELECT 'Notice Handling', 'Help responding to income-tax notices', 1
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM `services` WHERE `Name` = 'Notice Handling');
+
+-- Associates who registered before this table existed still need a pending review row.
+INSERT INTO `associate_profiles` (`user_id`, `role`, `approval_status`, `created_at`)
+SELECT u.UserId, u.role, 'pending', NOW()
+FROM `users` u
+LEFT JOIN `associate_profiles` p ON p.user_id = u.UserId
+WHERE UPPER(u.role) IN ('CA', 'ACCOUNTANT', 'TAX_EXPERT')
+  AND p.user_id IS NULL;

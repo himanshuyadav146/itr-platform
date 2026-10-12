@@ -13,7 +13,7 @@ export const API_ENDPOINTS = {
   
   // Users
   USERS: '/admin/users.php',
-  USER_DETAILS: (id: number) => `/admin/users.php?id=${id}`,
+  USER_DETAILS: (id: number) => `/admin/users.php?userId=${id}`,
   USER_STATS: (id: number) => `/admin/users.php?userId=${id}&stats=true`,
   
   // ITRs

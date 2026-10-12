@@ -21,9 +21,19 @@ if (!AssociateHelper::tableExists($conn, 'associate_profiles')) {
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
+    AssociateHelper::syncMissingProfiles($conn);
+
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($id > 0) {
         $row = AssociateHelper::getProfileRow($conn, $id);
+        if (!$row) {
+            $user = AssociateHelper::getUser($conn, $id);
+            $role = AssociateHelper::userRole($user);
+            if ($user && AssociateHelper::isAssociateRole($role)) {
+                AssociateHelper::ensureProfile($conn, $id, $role);
+                $row = AssociateHelper::getProfileRow($conn, $id);
+            }
+        }
         if (!$row) {
             AssociateHelper::json(404, 'error', ['message' => 'Associate not found']);
         }

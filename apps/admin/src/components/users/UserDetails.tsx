@@ -1,16 +1,52 @@
-import { Box, Paper, Typography, Button } from '@mui/material';
+import { useState } from 'react';
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Paper, TextField, Typography } from '@mui/material';
 import { Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { UserDetails } from '../../types';
 import { formatCurrency, formatNumber } from '../../utils/formatters';
 
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Admin',
+  CA: 'CA',
+  TAX_EXPERT: 'Tax Expert',
+  ACCOUNTANT: 'Accountant',
+  CLIENT: 'Client',
+};
+
+const ASSOCIATE_ROLES = new Set(['CA', 'TAX_EXPERT', 'ACCOUNTANT']);
+
+export const isAssociateRole = (role?: string) => ASSOCIATE_ROLES.has((role || '').toUpperCase());
+
+const roleLabel = (role?: string) => {
+  const key = (role || '').toUpperCase();
+  return ROLE_LABELS[key] || role || '—';
+};
+
 interface UserDetailsComponentProps {
   user: UserDetails;
   onEdit?: () => void;
+  approvalStatus?: string | null;
+  rejectionReason?: string;
+  approvalLoading?: boolean;
+  approvalError?: string | null;
+  onApprove?: () => void;
+  onReject?: (reason: string) => void;
 }
 
-export const UserDetailsSection = ({ user, onEdit }: UserDetailsComponentProps) => {
+export const UserDetailsSection = ({
+  user,
+  onEdit,
+  approvalStatus,
+  rejectionReason,
+  approvalLoading,
+  approvalError,
+  onApprove,
+  onReject,
+}: UserDetailsComponentProps) => {
   const navigate = useNavigate();
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const showReview = isAssociateRole(user.role) && !!onApprove && !!onReject;
 
   const handleEdit = () => {
     if (onEdit) {
@@ -47,7 +83,7 @@ export const UserDetailsSection = ({ user, onEdit }: UserDetailsComponentProps) 
               Email
             </Typography>
             <Typography variant="body1" gutterBottom>
-              {user.Email}
+              {user.Email || 'N/A'}
             </Typography>
 
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
@@ -61,8 +97,65 @@ export const UserDetailsSection = ({ user, onEdit }: UserDetailsComponentProps) 
               Role
             </Typography>
             <Typography variant="body1" gutterBottom>
-              {user.role || 'CLIENT'}
+              {roleLabel(user.role)}
             </Typography>
+
+            {showReview && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Listing approval
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, mb: 1.5 }}>
+                  <Chip
+                    size="small"
+                    label={approvalStatus || 'pending'}
+                    color={
+                      approvalStatus === 'approved'
+                        ? 'success'
+                        : approvalStatus === 'rejected'
+                          ? 'error'
+                          : 'warning'
+                    }
+                    sx={{ textTransform: 'capitalize' }}
+                  />
+                </Box>
+                {approvalError && (
+                  <Alert severity="error" sx={{ mb: 1.5 }}>
+                    {approvalError}
+                  </Alert>
+                )}
+                {approvalStatus === 'rejected' && rejectionReason && (
+                  <Typography variant="body2" color="error" sx={{ mb: 1.5 }}>
+                    {rejectionReason}
+                  </Typography>
+                )}
+                {approvalStatus !== 'approved' && (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="success"
+                      disabled={approvalLoading}
+                      onClick={onApprove}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      disabled={approvalLoading}
+                      onClick={() => {
+                        setRejectReason('');
+                        setRejectOpen(true);
+                      }}
+                    >
+                      Decline
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            )}
 
             {user.CreatedAt && (
               <>
@@ -107,6 +200,37 @@ export const UserDetailsSection = ({ user, onEdit }: UserDetailsComponentProps) 
           </Box>
         </Paper>
       </Box>
+
+      <Dialog open={rejectOpen} onClose={() => setRejectOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Decline associate</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            margin="dense"
+            label="Reason"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            multiline
+            minRows={3}
+            helperText="A reason is required so the associate knows what to correct."
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectOpen(false)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={!rejectReason.trim() || approvalLoading}
+            onClick={() => {
+              onReject?.(rejectReason.trim());
+              setRejectOpen(false);
+            }}
+          >
+            Decline
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

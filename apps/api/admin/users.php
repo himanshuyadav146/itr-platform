@@ -63,9 +63,16 @@ if ($decoded === false) {
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+function users_role_from_row($row)
+{
+    $role = $row['userRole'] ?? ($row['role'] ?? ($row['Role'] ?? ''));
+    $role = strtoupper(trim((string)$role));
+    return $role !== '' ? $role : 'CLIENT';
+}
+
 // GET - List users or get single user
 if ($method === 'GET') {
-    $userId = $_GET['userId'] ?? null;
+    $userId = $_GET['userId'] ?? ($_GET['id'] ?? null);
     
     if ($userId) {
         // Get single user details
@@ -77,7 +84,7 @@ if ($method === 'GET') {
                     u.LastName,
                     u.Email,
                     u.Mobile,
-                    u.Role,
+                    u.role AS userRole,
                     u.Platform,
                     u.Version,
                     u.CreatedAt,
@@ -111,7 +118,7 @@ if ($method === 'GET') {
                         "lastName" => $user['LastName'],
                         "email" => $user['Email'],
                         "mobile" => $user['Mobile'],
-                        "role" => $user['Role'] ?? 'user',
+                        "role" => users_role_from_row($user),
                         "platform" => $user['Platform'],
                         "version" => $user['Version'],
                         "createdAt" => $user['CreatedAt'],
@@ -158,14 +165,14 @@ if ($method === 'GET') {
         // Role filter (inclusion - get only this role)
         if (!empty($role) && empty($excludeRole)) {
             $roleEscaped = mysqli_real_escape_string($conn, $role);
-            $filters[] = "u.Role = '$roleEscaped'";
+            $filters[] = "UPPER(u.role) = UPPER('$roleEscaped')";
         }
         
         // Exclude role filter (exclusion - get all except this role)
         if (!empty($excludeRole)) {
             $excludeRoleEscaped = mysqli_real_escape_string($conn, $excludeRole);
             // Exclude users with this role, including handling NULL/empty roles
-            $filters[] = "(u.Role IS NULL OR u.Role = '' OR u.Role != '$excludeRoleEscaped')";
+            $filters[] = "(u.role IS NULL OR u.role = '' OR UPPER(u.role) != UPPER('$excludeRoleEscaped'))";
         }
         
         // Build WHERE clause
@@ -188,7 +195,7 @@ if ($method === 'GET') {
                     u.LastName,
                     u.Email,
                     u.Mobile,
-                    u.Role,
+                    u.role AS userRole,
                     u.Platform,
                     u.CreatedAt,
                     COUNT(DISTINCT pi.id) as payments_count,
@@ -216,7 +223,7 @@ if ($method === 'GET') {
                     "lastName" => $row['LastName'],
                     "email" => $row['Email'],
                     "mobile" => $row['Mobile'],
-                    "role" => $row['Role'] ?? 'user',
+                    "role" => users_role_from_row($row),
                     "platform" => $row['Platform'],
                     "createdAt" => $row['CreatedAt'],
                     "paymentsCount" => (int)$row['payments_count'],
