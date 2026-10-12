@@ -7,7 +7,6 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  Typography,
 } from '@mui/material';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,16 +14,14 @@ import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { itrApi } from '../../api/itr';
 import type { ITRWithDetails } from '../../types';
-import { ITRWorkflowStatus } from '../../types/enums';
+import { ITRStatus } from '../../types/enums';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../store/hooks';
 import { addNotification } from '../../store/slices/uiSlice';
-import { StatusChip } from '../common/StatusChip';
-import { ITR_STATUS_LABELS } from '../../utils/constants';
 
 const editSchema = z.object({
-  status: z.nativeEnum(ITRWorkflowStatus),
-  comment: z.string().min(1, 'Comment is required when updating workflow status'),
+  status: z.nativeEnum(ITRStatus),
+  comment: z.string().optional(),
 });
 
 type EditFormData = z.infer<typeof editSchema>;
@@ -38,6 +35,7 @@ export const ITREditForm = ({ itr }: ITREditFormProps) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
+  // Backend expects the actual itrId from itrDetails[0].itrId, which we store as itr.itrId
   const backendItrId = itr.itrId || itr.id;
 
   const {
@@ -47,60 +45,68 @@ export const ITREditForm = ({ itr }: ITREditFormProps) => {
   } = useForm<EditFormData>({
     resolver: zodResolver(editSchema),
     defaultValues: {
-      status: ITRWorkflowStatus.ASSIGNED,
+      status: (itr.status as ITRStatus) || ITRStatus.PENDING,
       comment: '',
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: { id: number; status: string; comment: string }) =>
-      itrApi.updateITR({
+    mutationFn: (data: { id: number; status: string; comment?: string }) => {
+      return itrApi.updateITR({
         id: data.id,
         status: data.status,
         comment: data.comment,
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['itr', itr.id] });
       queryClient.invalidateQueries({ queryKey: ['itrs'] });
-      queryClient.invalidateQueries({ queryKey: ['itrs', 'detail', itr.id] });
       dispatch(
         addNotification({
-          message: 'Workflow status updated successfully',
+          message: 'ITR updated successfully',
           type: 'success',
         })
       );
-      navigate(`/itrs/${itr.id}`);
+      navigate('/itrs');
     },
-    onError: (err: unknown) => {
-      const apiErr = err as { response?: { data?: { data?: { message?: string } } } };
-      setError(apiErr.response?.data?.data?.message || 'Failed to update ITR');
+    onError: (err: any) => {
+      setError(err.response?.data?.data?.message || 'Failed to update ITR');
+    },
+  });
+
+  const commentMutation = useMutation({
+    mutationFn: (data: { itrId: number; comment: string; status: string }) => {
+      return itrApi.addComment(data.itrId, data.comment, data.status);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['itr', itr.id] });
     },
   });
 
   const onSubmit = async (data: EditFormData) => {
     setError(null);
-    await updateMutation.mutateAsync({
-      id: backendItrId,
-      status: data.status,
-      comment: data.comment.trim(),
-    });
+
+    try {
+      await updateMutation.mutateAsync({
+        id: backendItrId,
+        status: data.status,
+        comment: data.comment,
+      });
+
+      if (data.comment && data.comment.trim()) {
+        await commentMutation.mutateAsync({
+          itrId: backendItrId,
+          comment: data.comment,
+          status: data.status,
+        });
+      }
+    } catch (err) {
+      // Error handled in mutation callbacks
+    }
   };
 
   return (
     <Paper sx={{ p: 3 }}>
-      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          Current display status:
-        </Typography>
-        <StatusChip status={itr.status} size="medium" />
-      </Box>
-
-      <Alert severity="info" sx={{ mb: 2 }}>
-        To mark an ITR as completed, use the <strong>Mark ITR Complete</strong> tab and submit the
-        acknowledgement number. Display status (Pending / Paid / In Progress / Completed) updates
-        automatically from payment and workflow steps.
-      </Alert>
-
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -111,15 +117,15 @@ export const ITREditForm = ({ itr }: ITREditFormProps) => {
         <TextField
           {...register('status')}
           select
-          label="Workflow status (internal)"
+          label="Status"
           fullWidth
           margin="normal"
           error={!!errors.status}
-          helperText={errors.status?.message || 'For required documents, incorrect docs, etc.'}
+          helperText={errors.status?.message}
         >
-          {(Object.values(ITRWorkflowStatus) as string[]).map((status) => (
+          {(Object.values(ITRStatus) as string[]).map((status) => (
             <MenuItem key={status} value={status}>
-              {ITR_STATUS_LABELS[status] || status}
+              {status}
             </MenuItem>
           ))}
         </TextField>
@@ -131,9 +137,8 @@ export const ITREditForm = ({ itr }: ITREditFormProps) => {
           rows={4}
           fullWidth
           margin="normal"
-          required
           error={!!errors.comment}
-          helperText={errors.comment?.message || 'Required for audit trail'}
+          helperText={errors.comment?.message || 'Optional comment'}
         />
 
         <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
@@ -156,3 +161,4 @@ export const ITREditForm = ({ itr }: ITREditFormProps) => {
     </Paper>
   );
 };
+

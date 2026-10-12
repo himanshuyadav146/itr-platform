@@ -7,7 +7,7 @@ const ITRsPage = () => {
     <DashboardLayout>
       <Box>
         <Typography variant="h4" gutterBottom>
-          ITR Filings
+          ITR Management
         </Typography>
         <ITRList />
       </Box>

@@ -8,13 +8,12 @@ import { Permission } from '../../types/enums';
 import { InfoCard } from '../common/InfoCard';
 import { InfoRow } from '../common/InfoRow';
 import { StatusChip } from '../common/StatusChip';
-import { canAssignItr } from '../../utils/itrStatus';
 
 interface ITRDetailsProps {
   itr: ITRWithDetails;
   onEdit?: () => void;
   onAssign?: () => void;
-  /** Show Assign button when paid/in-progress and not yet assigned. */
+  /** Show Assign button only when payment is successful (PAID or SUCCESS). Default false. */
   hasSuccessfulPayment?: boolean;
 }
 
@@ -66,7 +65,7 @@ export const ITRDetails = ({ itr, onEdit, onAssign, hasSuccessfulPayment = false
           Edit
         </Button>
       )}
-      {(canAssign || isAdmin) && (hasSuccessfulPayment || canAssignItr(itr)) && (
+      {(canAssign || isAdmin) && hasSuccessfulPayment && (
         <Button
           size="small"
           variant="outlined"

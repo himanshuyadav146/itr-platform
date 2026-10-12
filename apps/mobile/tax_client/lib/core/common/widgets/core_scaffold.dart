@@ -195,29 +195,30 @@ class CoreScaffold extends StatelessWidget {
       );
     }
 
-    // Non-scroll layout — use [body] inside LayoutBuilder, never the outer wrapper.
+    // Non-scroll layout
+    Widget content = body;
     if (useResponsiveMaxWidth) {
-      return LayoutBuilder(
+      content = LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth > responsiveBreakpoint;
-          Widget inner = ConstrainedBox(
+          Widget inner = content;
+          inner = ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: isWide ? maxContentWidth : double.infinity,
             ),
-            child: body,
+            child: inner,
           );
-          if (centered) {
-            inner = Align(alignment: Alignment.topCenter, child: inner);
-          }
-          return Padding(padding: basePadding, child: inner);
+          return centered
+              ? Align(alignment: Alignment.topCenter, child: inner)
+              : inner;
         },
       );
+    } else {
+      content = centered
+          ? Align(alignment: Alignment.topCenter, child: content)
+          : content;
     }
 
-    Widget inner = body;
-    if (centered) {
-      inner = Align(alignment: Alignment.topCenter, child: inner);
-    }
-    return Padding(padding: basePadding, child: inner);
+    return Padding(padding: basePadding, child: content);
   }
 }

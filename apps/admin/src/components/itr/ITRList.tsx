@@ -16,8 +16,7 @@ import { ITR_STATUS_LABELS } from '../../utils/constants';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { setITRFilters } from '../../store/slices/filtersSlice';
-import { ITRDisplayStatus } from '../../types/enums';
-import { canAssignItr } from '../../utils/itrStatus';
+import { ITRStatus } from '../../types/enums';
 import { AssignProfessionalModal } from './AssignProfessionalModal';
 import type { ITRDetail } from '../../types';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -82,7 +81,7 @@ export const ITRList = () => {
 
   const handleStatusFilter = (status: string) => {
     setStatusFilter(status);
-    dispatch(setITRFilters({ status: status || undefined, page: 1 }));
+    dispatch(setITRFilters({ status: (status ? status as ITRStatus : undefined), page: 1 }));
   };
 
   const handleView = (id: number) => {
@@ -127,7 +126,8 @@ export const ITRList = () => {
           />,
         ];
 
-        if (hasPermission(Permission.ASSIGN_ITR) && canAssignItr(row)) {
+        const hasSuccessfulPayment = row.status === 'PAID' || row.status === 'SUCCESS';
+        if (hasPermission(Permission.ASSIGN_ITR) && hasSuccessfulPayment) {
           actions.push(
             <GridActionsCellItem
               key="assign"
@@ -154,7 +154,7 @@ export const ITRList = () => {
           sx={{ minWidth: 200 }}
         >
           <MenuItem value="">All</MenuItem>
-          {(Object.values(ITRDisplayStatus) as string[]).map((status) => (
+          {(Object.values(ITRStatus) as string[]).map((status) => (
             <MenuItem key={status} value={status}>
               {ITR_STATUS_LABELS[status]}
             </MenuItem>

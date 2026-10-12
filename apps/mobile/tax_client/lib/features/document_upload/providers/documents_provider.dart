@@ -4,24 +4,10 @@ import 'package:file_picker/file_picker.dart';
 class DocumentCategory {
   final String title;
   final List<File> files;
-  /// Local file path → optional PDF password entered by user.
-  final Map<String, String> filePasswords;
+  DocumentCategory({required this.title, required this.files});
 
-  DocumentCategory({
-    required this.title,
-    required this.files,
-    Map<String, String>? filePasswords,
-  }) : filePasswords = filePasswords ?? const {};
-
-  DocumentCategory copyWith({
-    List<File>? files,
-    Map<String, String>? filePasswords,
-  }) {
-    return DocumentCategory(
-      title: title,
-      files: files ?? this.files,
-      filePasswords: filePasswords ?? this.filePasswords,
-    );
+  DocumentCategory copyWith({List<File>? files}) {
+    return DocumentCategory(title: title, files: files ?? this.files);
   }
 }
 
@@ -67,36 +53,8 @@ class DocumentsNotifier extends StateNotifier<Map<String, DocumentCategory>> {
     final updatedFiles = category.files
         .where((f) => f.path != file.path)
         .toList();
-    final updatedPasswords = Map<String, String>.from(category.filePasswords)
-      ..remove(file.path);
 
-    state = {
-      ...state,
-      categoryKey: category.copyWith(
-        files: updatedFiles,
-        filePasswords: updatedPasswords,
-      ),
-    };
-  }
-
-  void setFilePassword(String categoryKey, String filePath, String password) {
-    final category = state[categoryKey]!;
-    final updatedPasswords = Map<String, String>.from(category.filePasswords)
-      ..[filePath] = password;
-
-    state = {
-      ...state,
-      categoryKey: category.copyWith(filePasswords: updatedPasswords),
-    };
-  }
-
-  /// Clears picked local files (e.g. when re-opening the upload screen).
-  void clearAll() {
-    state = {
-      'form16a': DocumentCategory(title: 'Form 16-A', files: []),
-      'form16b': DocumentCategory(title: 'Form 16-B', files: []),
-      'others': DocumentCategory(title: 'Other Documents', files: []),
-    };
+    state = {...state, categoryKey: category.copyWith(files: updatedFiles)};
   }
 
   // Method to set files for a category (used when loading from server)
