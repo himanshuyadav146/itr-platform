@@ -8,13 +8,30 @@ export const UserRole = {
 
 export type UserRole = typeof UserRole[keyof typeof UserRole];
 
-export const ITRStatus = {
+/** Display statuses for dashboard/list/detail (synced with mobile). */
+export const ITRDisplayStatus = {
   PENDING: 'PENDING',
+  PAID: 'PAID',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export type ITRDisplayStatus = typeof ITRDisplayStatus[keyof typeof ITRDisplayStatus];
+
+/** Legacy workflow statuses set via ITR Status edit tab. */
+export const ITRWorkflowStatus = {
   ASSIGNED: 'ASSIGNED',
   REQUIRED: 'REQUIRED',
   INCORRECT: 'INCORRECT',
   FILED: 'FILED',
-  COMPLETED: 'COMPLETED',
+} as const;
+
+export type ITRWorkflowStatus = typeof ITRWorkflowStatus[keyof typeof ITRWorkflowStatus];
+
+/** @deprecated Use ITRDisplayStatus for chips/filters; ITRWorkflowStatus for edit form. */
+export const ITRStatus = {
+  ...ITRDisplayStatus,
+  ...ITRWorkflowStatus,
 } as const;
 
 export type ITRStatus = typeof ITRStatus[keyof typeof ITRStatus];

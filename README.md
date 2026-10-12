@@ -1,6 +1,6 @@
 # ITR Platform
 
-Monorepo for the **All India ITR** product stack: a PHP REST API, a React admin panel, and a Flutter mobile app. All clients talk to the same backend.
+Monorepo for the **All India ITR** product stack: a PHP REST API, a React admin panel, a React client website, and a Flutter mobile app. All clients talk to the same backend.
 
 > **Documentation:** See [`docs/README.md`](docs/README.md) for architecture, API contracts, workflows, Figma reference, and per-project guides.
 
@@ -22,8 +22,10 @@ itr-platform/
 ├── apps/
 │   ├── mobile/tax_client/             # Flutter — FinApp
 │   ├── api/                           # PHP REST API
-│   └── admin/                         # React admin panel
+│   ├── admin/                         # React admin panel
+│   └── itr_web/FINAPP                 # React client website
 ├── scripts/
+│   ├── setup-local-xampp.sh           # One-command Mac XAMPP local setup
 │   └── fix-xampp-permissions.sh
 └── .github/workflows/                 # CI/CD (optional, later)
 ```
@@ -35,6 +37,7 @@ itr-platform/
 ```mermaid
 flowchart LR
   Admin["Admin Panel\napps/admin"] -->|HTTP /api| API["PHP API\napps/api"]
+  Web["Website\napps/itr_web/FINAPP"] -->|HTTP /api| API
   Mobile["Mobile App\napps/mobile/tax_client"] -->|HTTP /api| API
   API --> MySQL[(MySQL\nitr_services)]
 ```
@@ -43,6 +46,7 @@ flowchart LR
 |---------|-------|-------------------|
 | **API** | PHP 7.4+, MySQL, Apache (XAMPP) | `http://localhost/api` |
 | **Admin** | React 19, TypeScript, Vite, MUI | `http://localhost:5173/admin/` |
+| **Website** | React, Vite, Tailwind | `http://localhost:5174/` |
 | **Mobile** | Flutter 3.8+, Dart ^3.8.1, Riverpod | Device / emulator |
 
 **Production API:** `http://allindiaitr.in`
@@ -64,6 +68,40 @@ Install these once before setting up any project:
 | [Xcode](https://developer.apple.com/xcode/) | Latest (macOS only) | Mobile (iOS) |
 
 Optional: [Postman](https://www.postman.com/) for API testing.
+
+---
+
+## One-command local setup (Mac + XAMPP)
+
+Apache and MySQL must already be running in XAMPP. From the repo root:
+
+```bash
+chmod +x scripts/setup-local-xampp.sh
+./scripts/setup-local-xampp.sh --start
+```
+
+That script:
+
+1. Backs up the current `/Applications/XAMPP/htdocs/api` (or `xamppfiles/htdocs/api`)
+2. Copies `apps/api` into `htdocs/api` (keeps existing `config.php` if present)
+3. Creates local DB tables + associate marketplace migration
+4. Seeds demo users
+5. `npm install` for admin and website, then starts them
+
+| App | URL |
+|-----|-----|
+| API health | http://localhost/api/test_connection.php |
+| Admin | http://localhost:5173/admin/ |
+| Website services | http://localhost:5174/services |
+
+| Login | Email | Password |
+|-------|-------|----------|
+| Admin | `admin@example.com` | `password123` |
+| Client | `client@example.com` | `password123` |
+| Pending associate | `priya.ca@example.com` | `password123` |
+| Approved associate | `rahul.ca@example.com` | `password123` |
+
+Re-run the same script after you pull new PHP changes. Do **not** use this script against production.
 
 ---
 

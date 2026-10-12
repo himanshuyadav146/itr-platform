@@ -21,6 +21,9 @@ class PaymentInitiateResponse {
   
   @JsonKey(name: 'merchant_id')
   final String merchantId;
+
+  @JsonKey(name: 'razorpay_order_id')
+  final String? razorpayOrderId;
   
   final String message;
 
@@ -32,6 +35,7 @@ class PaymentInitiateResponse {
     required this.amount,
     required this.currency,
     required this.merchantId,
+    this.razorpayOrderId,
     required this.message,
   });
 

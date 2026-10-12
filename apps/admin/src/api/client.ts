@@ -20,7 +20,7 @@ let isHandling401 = false;
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Don't add token to auth endpoints (login, register, etc.)
-    const authEndpoints = ['/auth/login.php', '/auth/admin_login.php', '/auth/register_professional.php', '/login.php'];
+    const authEndpoints = ['/auth/login.php', '/auth/admin_login.php', '/auth/register_professional.php', '/auth/register_associate.php', '/login.php'];
     const isAuthEndpoint = authEndpoints.some(endpoint => config.url?.includes(endpoint));
     
     if (!isAuthEndpoint) {
@@ -58,7 +58,7 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 401 && !isHandling401) {
       // Don't handle 401 for auth endpoints - they're expected to return 401 on failure
-      const authEndpoints = ['/auth/login.php', '/auth/admin_login.php', '/auth/register_professional.php', '/login.php'];
+      const authEndpoints = ['/auth/login.php', '/auth/admin_login.php', '/auth/register_professional.php', '/auth/register_associate.php', '/login.php'];
       const isAuthEndpoint = authEndpoints.some(endpoint => error.config?.url?.includes(endpoint));
       
       if (isAuthEndpoint) {

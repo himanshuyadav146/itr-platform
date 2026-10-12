@@ -31,6 +31,10 @@ flutter run
 
 See [../ENVIRONMENTS.md](../ENVIRONMENTS.md) for local API configuration.
 
+For the full pre-implementation UI audit, read [MOBILE_UI_REFACTOR_ANALYSIS.md](./MOBILE_UI_REFACTOR_ANALYSIS.md).
+
+For the first screen-specific Step 2 report, read [MOBILE_STEP2_LOGIN_ANALYSIS.md](./MOBILE_STEP2_LOGIN_ANALYSIS.md).
+
 ---
 
 ## Project structure
@@ -227,6 +231,8 @@ flutter build appbundle --release
 
 | Doc | Purpose |
 |-----|---------|
+| [MOBILE_UI_REFACTOR_ANALYSIS.md](./MOBILE_UI_REFACTOR_ANALYSIS.md) | Full Step 1 audit before UI refactor |
+| [MOBILE_STEP2_LOGIN_ANALYSIS.md](./MOBILE_STEP2_LOGIN_ANALYSIS.md) | Step 2 login screen analysis + Figma blocker |
 | [../SCREEN_API_MAP.md](../SCREEN_API_MAP.md) | APIs per screen |
 | [../WORKFLOWS.md](../WORKFLOWS.md) | User journeys |
 | [../FIGMA.md](../FIGMA.md) | Design migration |

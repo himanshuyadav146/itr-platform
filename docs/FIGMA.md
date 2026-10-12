@@ -12,7 +12,8 @@ Design source and UI migration guide for the ITR Platform, primarily the **mobil
 | **URL** | [Figma — tax_app](https://www.figma.com/design/7PMVY5IZeTIPhFazfBGoY7/tax_app?node-id=0-1) |
 | **File key** | `7PMVY5IZeTIPhFazfBGoY7` |
 | **Page node** | `0:1` |
-| **Theme** | Dark (entire file) |
+| **Client theme** | Dark navy (mobile + website) |
+| **Admin / associate theme** | Light desktop: KPI cards, tabs, DataGrid |
 | **App name (UI)** | FinApp - Next Gen |
 
 ---
@@ -40,7 +41,15 @@ Use this when converting Figma frames to Flutter screens. Update the **Figma fra
 | P3 | `/settings` | SettingsScreen | TBD | Stub |
 | P3 | `/refer_earn` | ReferAndEarnScreen | TBD | Stub |
 
-**Admin panel:** No dedicated Figma file linked yet. Admin uses MUI components with standard dashboard patterns.
+**Admin / associate desktop (same Figma file):** Frames include Associate Approvals Queue, Review & Vetting, Platform Services Catalog, My Profile & Credentials, My Services & Fees, Assigned Filings, and Pending Review. Admin stays light MUI. Keep CA / ICAI / ITR labels (do not copy US tax form names from draft frames).
+
+| Admin route | Screen | Figma frame |
+|-------------|--------|-------------|
+| `/professionals` | Approvals Queue | Associate Approvals Queue + Review & Vetting |
+| `/profile` | My Profile | My Profile & Credentials + My Services & Fees |
+| `/services` | Services Catalog | Platform Services Catalog |
+| `/itrs` | Assigned Filings | Assigned Filings |
+| `/dashboard` | Pending Review | Pending Review |
 
 ---
 

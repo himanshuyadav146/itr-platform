@@ -16,12 +16,18 @@ class PackagesNotifier extends StateNotifier<AsyncValue<List<PackageModel>>> {
   PackagesNotifier(this.remoteDataSource) : super(const AsyncValue.loading());
 
   Future<void> getPackages() async {
-    state = const AsyncValue.loading();
+    // Keep previous packages on screen while refreshing (avoids blank sheet).
+    state = const AsyncValue<List<PackageModel>>.loading().copyWithPrevious(
+      state,
+    );
     try {
       final packages = await remoteDataSource.getPackages();
       state = AsyncValue.data(packages);
     } catch (e, stackTrace) {
-      state = AsyncValue.error(e, stackTrace);
+      state = AsyncValue<List<PackageModel>>.error(
+        e,
+        stackTrace,
+      ).copyWithPrevious(state);
     }
   }
 }

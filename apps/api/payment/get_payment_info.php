@@ -62,15 +62,21 @@ if (!$userId) {
 // Get parameters
 $panNumber = null;
 $packageId = null;
+$associateId = 0;
+$serviceId = 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $panNumber = isset($_GET['panNumber']) ? trim($_GET['panNumber']) : null;
     $packageId = isset($_GET['packageId']) ? trim($_GET['packageId']) : null;
+    $associateId = isset($_GET['associateId']) ? (int)$_GET['associateId'] : 0;
+    $serviceId = isset($_GET['serviceId']) ? (int)$_GET['serviceId'] : 0;
 } else {
     $input = file_get_contents("php://input");
     $data = json_decode($input, true);
     $panNumber = $data['panNumber'] ?? null;
     $packageId = $data['packageId'] ?? null;
+    $associateId = isset($data['associateId']) ? (int)$data['associateId'] : (isset($data['associate_id']) ? (int)$data['associate_id'] : 0);
+    $serviceId = isset($data['serviceId']) ? (int)$data['serviceId'] : (isset($data['service_id']) ? (int)$data['service_id'] : 0);
 }
 
 $userId = mysqli_real_escape_string($conn, $userId);
@@ -112,17 +118,30 @@ $phone = $user['Mobile'];
 
 if ($panNumber) {
     $panNumber = mysqli_real_escape_string($conn, $panNumber);
-    $personalSql = "SELECT FirstName, LastName, EMAIL, MobileNumber, PANNumber 
+    $personalSql = "SELECT FirstName, LastName, EMAIL, MobileNumber, PANNumber, associate_id, service_id 
                     FROM personal_details 
                     WHERE UserId = '$userId' AND PANNumber = '$panNumber' AND isActive = 1 
                     ORDER BY createdAt DESC LIMIT 1";
     $personalResult = $conn->query($personalSql);
+    if (!$personalResult) {
+        $personalSql = "SELECT FirstName, LastName, EMAIL, MobileNumber, PANNumber 
+                        FROM personal_details 
+                        WHERE UserId = '$userId' AND PANNumber = '$panNumber' AND isActive = 1 
+                        ORDER BY createdAt DESC LIMIT 1";
+        $personalResult = $conn->query($personalSql);
+    }
     if ($personalResult && $personalResult->num_rows > 0) {
         $personalDetails = $personalResult->fetch_assoc();
         // Use personal details if available
         $name = trim(($personalDetails['FirstName'] ?? '') . ' ' . ($personalDetails['LastName'] ?? ''));
         $email = $personalDetails['EMAIL'] ?? $email;
         $phone = $personalDetails['MobileNumber'] ?? $phone;
+        if ($associateId <= 0 && !empty($personalDetails['associate_id'])) {
+            $associateId = (int)$personalDetails['associate_id'];
+        }
+        if ($serviceId <= 0 && !empty($personalDetails['service_id'])) {
+            $serviceId = (int)$personalDetails['service_id'];
+        }
     }
 }
 
@@ -153,7 +172,7 @@ if ($packageId) {
 // ============================================
 // Calculate Payment Breakdown (from packages + additional fees)
 // ============================================
-$breakdown = PaymentHelper::calculatePaymentBreakdown($conn, $packageId);
+$breakdown = PaymentHelper::calculatePaymentBreakdown($conn, $packageId, 18, $associateId, $serviceId);
 $paymentSummary = PaymentHelper::buildPaymentSummary($breakdown);
 
 // ============================================
@@ -188,6 +207,11 @@ $responseData = [
 // Add package details if available
 if ($packageDetails) {
     $responseData['package'] = $packageDetails;
+}
+if (!empty($breakdown['associate_id'])) {
+    $responseData['associate_id'] = $breakdown['associate_id'];
+    $responseData['service_id'] = $breakdown['service_id'];
+    $responseData['quoted_fee'] = $breakdown['quoted_fee'];
 }
 
 http_response_code(200);
