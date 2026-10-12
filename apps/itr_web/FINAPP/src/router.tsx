@@ -16,7 +16,12 @@ import Services from './pages/Services';
 import Associates from './pages/Associates';
 import AssociateDetail from './pages/AssociateDetail';
 import AssociateRegister from './pages/AssociateRegister';
+import AdminAppRedirect from './pages/AdminAppRedirect';
 export const router = createBrowserRouter([
+  {
+    path: '/admin/*',
+    element: <AdminAppRedirect />,
+  },
   {
     path: '/',
     element: <Layout />,

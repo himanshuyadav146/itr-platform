@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiPost, getErrorMessage } from '../services/api';
 import { apiUrl } from '../config/baseUrlConstant';
+import { getAdminLoginUrl } from '../config/adminUrl';
 import InputField from '../components/InputField';
 
 const AssociateRegister = () => {
@@ -35,9 +36,10 @@ const AssociateRegister = () => {
         platform: 'web',
         version: '1.0',
       });
+      const adminLogin = getAdminLoginUrl();
       setSuccess('Registration received. Redirecting to associate login…');
       setTimeout(() => {
-        window.location.href = '/admin/login';
+        window.location.href = adminLogin;
       }, 1200);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -55,7 +57,14 @@ const AssociateRegister = () => {
           </p>
 
           {error && <div className="mt-4 rounded border border-red-700 bg-red-900/40 p-3 text-red-100">{error}</div>}
-          {success && <div className="mt-4 rounded border border-emerald-700 bg-emerald-900/40 p-3 text-emerald-100">{success}</div>}
+          {success && (
+            <div className="mt-4 rounded border border-emerald-700 bg-emerald-900/40 p-3 text-emerald-100">
+              {success}{' '}
+              <a href={getAdminLoginUrl()} className="underline text-emerald-200">
+                Open associate login
+              </a>
+            </div>
+          )}
 
           <form className="mt-6 space-y-4" onSubmit={onSubmit}>
             <InputField name="name" label="Full name" value={form.name} onChange={onChange} required />
