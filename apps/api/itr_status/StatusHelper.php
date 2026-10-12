@@ -307,6 +307,106 @@ class StatusHelper {
     }
     
     /**
+     * Admin dashboard display status (mobile workflow + explicit Paid before processing).
+     *
+     * @param bool $hasPaymentSuccess
+     * @param string|null $ackNumber
+     * @param array $statusSteps
+     * @param bool $hasActiveAssignment
+     * @return array{displayStatus:string,displayText:string,itrStatus:string,hasSuccessfulPayment:bool}
+     */
+    public static function resolveAdminDisplayStatus($hasPaymentSuccess, $ackNumber, $statusSteps, $hasActiveAssignment = false) {
+        $ackNumber = is_string($ackNumber) ? trim($ackNumber) : '';
+
+        if ($ackNumber !== '') {
+            return [
+                'displayStatus' => 'COMPLETED',
+                'displayText' => 'Completed',
+                'itrStatus' => 'completed',
+                'hasSuccessfulPayment' => (bool) $hasPaymentSuccess,
+            ];
+        }
+
+        if (!$hasPaymentSuccess) {
+            return [
+                'displayStatus' => 'PENDING',
+                'displayText' => 'Pending',
+                'itrStatus' => 'pending_payment',
+                'hasSuccessfulPayment' => false,
+            ];
+        }
+
+        foreach ($statusSteps as $step) {
+            $code = $step['statusStep'] ?? $step['status_step'] ?? '';
+            $done = !empty($step['isCompleted']) || !empty($step['is_completed']);
+            if ($code === 'acknowledgement_generated' && $done) {
+                $notes = trim($step['notes'] ?? '');
+                if ($notes !== '') {
+                    return [
+                        'displayStatus' => 'COMPLETED',
+                        'displayText' => 'Completed',
+                        'itrStatus' => 'completed',
+                        'hasSuccessfulPayment' => true,
+                    ];
+                }
+            }
+        }
+
+        $normalized = [];
+        foreach ($statusSteps as $step) {
+            $normalized[] = [
+                'is_completed' => !empty($step['isCompleted']) || !empty($step['is_completed']),
+                'has_concern' => !empty($step['hasConcern']) || !empty($step['has_concern']),
+                'status_step' => $step['statusStep'] ?? $step['status_step'] ?? '',
+            ];
+        }
+
+        $overall = self::calculateOverallStatus($normalized);
+        if ($overall === 'completed') {
+            return [
+                'displayStatus' => 'COMPLETED',
+                'displayText' => 'Completed',
+                'itrStatus' => 'completed',
+                'hasSuccessfulPayment' => true,
+            ];
+        }
+
+        $workflowStarted = (bool) $hasActiveAssignment;
+        if (!$workflowStarted) {
+            foreach ($normalized as $step) {
+                if (!empty($step['has_concern'])) {
+                    $workflowStarted = true;
+                    break;
+                }
+                $code = $step['status_step'];
+                if ($code === 'payment_success' || $code === '') {
+                    continue;
+                }
+                if (!empty($step['is_completed'])) {
+                    $workflowStarted = true;
+                    break;
+                }
+            }
+        }
+
+        if (!$workflowStarted) {
+            return [
+                'displayStatus' => 'PAID',
+                'displayText' => 'Paid',
+                'itrStatus' => 'paid',
+                'hasSuccessfulPayment' => true,
+            ];
+        }
+
+        return [
+            'displayStatus' => 'IN_PROGRESS',
+            'displayText' => 'In Progress',
+            'itrStatus' => $overall === 'concern_pending' ? 'concern_pending' : 'in_progress',
+            'hasSuccessfulPayment' => true,
+        ];
+    }
+
+    /**
      * Get overall status display text
      */
     public static function getOverallStatusText($status) {

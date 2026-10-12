@@ -65,7 +65,9 @@ ItrStatusStepModel _$ItrStatusStepModelFromJson(Map<String, dynamic> json) =>
       completedAt: json['completedAt'] as String?,
       hasConcern: json['hasConcern'] as bool?,
       notes: json['notes'] as String?,
-      concern: json['concern'] as String?,
+      concern: json['concern'] == null
+          ? null
+          : StatusConcernModel.fromJson(json['concern'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$ItrStatusStepModelToJson(ItrStatusStepModel instance) =>
@@ -78,6 +80,26 @@ Map<String, dynamic> _$ItrStatusStepModelToJson(ItrStatusStepModel instance) =>
       'hasConcern': instance.hasConcern,
       'notes': instance.notes,
       'concern': instance.concern,
+    };
+
+StatusConcernModel _$StatusConcernModelFromJson(Map<String, dynamic> json) =>
+    StatusConcernModel(
+      id: (json['id'] as num?)?.toInt(),
+      type: json['type'] as String?,
+      message: json['message'] as String?,
+      status: json['status'] as String?,
+      createdAt: json['createdAt'] as String?,
+      imageUrl: json['imageUrl'] as String?,
+    );
+
+Map<String, dynamic> _$StatusConcernModelToJson(StatusConcernModel instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'type': instance.type,
+      'message': instance.message,
+      'status': instance.status,
+      'createdAt': instance.createdAt,
+      'imageUrl': instance.imageUrl,
     };
 
 StatusUpdateModel _$StatusUpdateModelFromJson(Map<String, dynamic> json) =>

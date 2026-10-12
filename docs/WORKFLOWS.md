@@ -30,14 +30,14 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  H[Home — File ITR] --> P[Package bottom sheet]
-  P --> G{getItrByUser count?}
-  G -->|0| PI[Personal info /personal_info]
-  G -->|>0| IL[ITR list /itr_list]
-  IL -->|select or FAB| PI
+  H[Home — File ITR] --> S[Services /services]
+  S --> A[Associates /associates]
+  A --> D[Associate detail]
+  D --> PI[Personal info /personal_info]
   PI --> DU[Document upload /document_upload]
-  DU --> PAY[Payment /payment?packageId=]
+  DU --> PAY[Payment /payment]
   PAY -->|Razorpay success| ST[Status /status]
+```
   ST -->|complete| H
 ```
 
@@ -45,13 +45,14 @@ flowchart TD
 
 | # | Action | Route | API(s) | Notes |
 |---|--------|-------|--------|-------|
-| 1 | Tap "File ITR" on Home | `/` | — | Sets `JourneyType.ITR` |
-| 2 | Select package | Modal | `GET /package/getPackages.php` | Stores in `selectedPackageProvider` |
-| 3 | Check existing ITRs | — | `GET /get_itrbyuser.php` | If count=0 → personal info; else → ITR list |
-| 4 | Fill personal details | `/personal_info` | `POST /itrdetails/add_personal_details.php` | Sends `packageId` |
-| 5 | Upload documents | `/document_upload` | `POST /itrdetails/add_documents.php`, `save_documents.php`, `get_documents.php` | Multi-file upload |
-| 6 | Review & pay | `/payment` | `GET /payment/get_payment_info.php`, `POST /payment/initiate_payment.php`, `POST /payment/verify_payment.php` | Razorpay SDK |
-| 7 | View status | `/status` | `GET /itr_status/get_detailed_status.php` | Timeline of ITR progress |
+| 1 | Tap "File ITR" on Home | `/` | — | Sets `JourneyType.ITR`, opens `/services` |
+| 2 | Select service | `/services` | `GET /associates/services.php` | Stores catalog service |
+| 3 | Pick named associate | `/associates` | `GET /associates/list.php` | Only `approval_status=approved` |
+| 4 | Confirm listed fee | `/associates/:id` | `GET /associates/detail.php` | Book → personal info |
+| 5 | Fill personal details | `/personal_info` | `POST /itrdetails/add_personal_details.php` | Sends `associateId` + `serviceId` |
+| 6 | Upload documents | `/document_upload` | `POST /itrdetails/add_documents.php`, `save_documents.php`, `get_documents.php` | Multi-file upload |
+| 7 | Review & pay associate fee | `/payment` | `GET /payment/get_payment_info.php`, `POST /payment/initiate_payment.php`, `POST /payment/verify_payment.php` | GST + additional fees; assign on verify |
+| 8 | View status | `/status` | `GET /itr_status/get_detailed_status.php` | Timeline of ITR progress |
 
 ### E-Verify shortcut
 

@@ -134,6 +134,15 @@ class AppStrings {
   static const submitAllDocuments = 'Submit All Documents';
   static const upload = 'Upload';
   static const noFiles = 'No files uploaded yet';
+  static const form16PasswordTitle = 'PDF Password';
+  static const form16PasswordHint =
+      'If your Form 16 PDF is password protected, enter it here so your CA can open the file. This is optional — you can skip if not needed.';
+  static const form16PasswordFieldLabel = 'PDF password';
+  static const form16PasswordFieldHint = 'Enter password (optional)';
+  static const form16PasswordSkip = 'Skip';
+  static const form16PasswordContinue = 'Continue';
+  static const form16PasswordAdded = 'PDF password added';
+  static const form16PasswordNotProvided = 'No PDF password provided';
   static const infoSaved = 'Information saved';
 
   // More Screen

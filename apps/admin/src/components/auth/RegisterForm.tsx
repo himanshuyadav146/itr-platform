@@ -22,6 +22,8 @@ const registerSchema = z.object({
   phone: z.string().min(10, 'Phone number must be at least 10 digits'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   occupation: z.nativeEnum(ProfessionalOccupation),
+  icai_membership_no: z.string().optional(),
+  city: z.string().optional(),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -51,12 +53,14 @@ export const RegisterForm = () => {
         phone: data.phone,
         password: data.password,
         occupation: data.occupation,
-      });
+        icai_membership_no: data.icai_membership_no,
+        city: data.city,
+      } as any);
 
       if (response.status === 'success') {
         dispatch(
           addNotification({
-            message: 'Registration successful! Please login.',
+            message: 'Registration received. Sign in to complete credentials. You stay unlisted until an admin approves your profile.',
             type: 'success',
           })
         );
@@ -121,6 +125,20 @@ export const RegisterForm = () => {
         <MenuItem value={ProfessionalOccupation.TAX_EXPERT}>Tax Expert</MenuItem>
         <MenuItem value={ProfessionalOccupation.ACCOUNTANT}>Accountant</MenuItem>
       </TextField>
+
+      <TextField
+        {...register('icai_membership_no')}
+        label="ICAI / membership no."
+        fullWidth
+        margin="normal"
+      />
+
+      <TextField
+        {...register('city')}
+        label="City"
+        fullWidth
+        margin="normal"
+      />
 
       <TextField
         {...register('password')}
